@@ -1,0 +1,46 @@
+{
+  "name": "ffquintella-dockerapp_adrapi",
+  "version": "0.1.0",
+  "author": "Felipe Quintella",
+  "summary": "",
+  "license": "GPL-3.0-or-later",
+  "source": "",
+  "dependencies": [
+
+  ],
+  "operatingsystem_support": [
+    {
+      "operatingsystem": "CentOS",
+      "operatingsystemrelease": [
+        "7"
+      ]
+    },
+    {
+      "operatingsystem": "OracleLinux",
+      "operatingsystemrelease": [
+        "7"
+      ]
+    },
+    {
+      "operatingsystem": "RedHat",
+      "operatingsystemrelease": [
+        "7"
+      ]
+    },
+    {
+      "operatingsystem": "Scientific",
+      "operatingsystemrelease": [
+        "7"
+      ]
+    }
+  ],
+  "requirements": [
+    {
+      "name": "puppet",
+      "version_requirement": ">= 4.10.0 < 7.0.0"
+    }
+  ],
+  "pdk-version": "1.9.1",
+  "template-url": "file:///opt/puppetlabs/pdk/share/cache/pdk-templates.git",
+  "template-ref": "1.9.1-0-g6945d31"
+}
