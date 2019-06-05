@@ -14,8 +14,8 @@ include 'dockerapp'
 
   $image = "ffquintella/adrapi:${version}"
 
-  $dir_owner = 802
-  $dir_group = 802
+  $dir_owner = 999
+  $dir_group = 999
 
   $data_dir = $::dockerapp::params::data_dir
   $config_dir = $::dockerapp::params::config_dir
