@@ -1,0 +1,10 @@
+<%- | String  $log_level
+| -%>
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "<%= $log_level %>"
+    }
+  },
+  "AllowedHosts": "*"
+}
