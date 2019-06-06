@@ -11,7 +11,8 @@
 {
   "Logging": {
     "LogLevel": {
-      "Default": "<%= $log_level %>"
+      "Default": "<%= $log_level %>",
+      "Microsoft": "Information"
     }
   },
   "AllowedHosts": "*",
