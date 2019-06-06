@@ -56,6 +56,12 @@
 # @param [String] ldap_search_filter 
 #   Search filter
 #
+# @param [String] certificate_file 
+#   PkCS12 file containing certificate, certificate chain and secret key
+#
+# @param [String] certificate_password 
+#   The password for the certificate file
+#
 class dockerapp_adrapi (
   $service_name = 'adrapi',
   $version = '0.4.7',
@@ -70,6 +76,8 @@ class dockerapp_adrapi (
   $ldap_bind_password = 'pwd',
   $ldap_search_base = 'DC=a,DC=b',
   $ldap_search_filter = '(&(objectClass=user)(objectClass=person)(sAMAccountName={0}))',
+  $certificate_file = 'adrapi-dev.p12',
+  $certificate_password = 'adrapi-dev',
 ){
 
 include 'dockerapp'
@@ -101,15 +109,17 @@ include 'dockerapp'
 
   file {"${conf_configdir}/appsettings.json":
     content => epp('dockerapp_adrapi/appsettings.json.epp',
-      { 'log_level'       => $log_level,
-        'ssl'             => $ldap_use_ssl,
-        'maxResults'      => $ldap_max_results,
-        'poolSize'        => $ldap_pool_size,
-        'bindDn'          => $ldap_bind_dn,
-        'bindCredentials' => $ldap_bind_password,
-        'searchBase'      => $ldap_search_base,
-        'searchFilter'    => $ldap_search_filter,
-        'servers'         => $ldap_servers }),
+      { 'log_level'           => $log_level,
+        'ssl'                 => $ldap_use_ssl,
+        'maxResults'          => $ldap_max_results,
+        'poolSize'            => $ldap_pool_size,
+        'bindDn'              => $ldap_bind_dn,
+        'bindCredentials'     => $ldap_bind_password,
+        'searchBase'          => $ldap_search_base,
+        'searchFilter'        => $ldap_search_filter,
+        'servers'             => $ldap_servers,
+        'certificateFile'     => $certificate_file,
+        'certificatePassword' => $certificate_password, }),
     require => File[$conf_configdir],
   }
 

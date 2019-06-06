@@ -6,7 +6,9 @@
       String  $bindCredentials,
       String  $searchBase,
       String  $searchFilter,
-      Array   $servers
+      Array   $servers,
+      String  $certificateFile,
+      String  $certificatePassword
 | -%>
 {
   "Logging": {
@@ -30,5 +32,9 @@
     "searchBase": "<%= $searchBase -%>",
     "searchFilter": "<%= $searchFilter -%>",
     "adminCn": "CN=Admins,OU=Serice,DC=labesi,DC=fgv,DC=br"
+  },
+  "certificate": {
+    "file" : "<%= $certificateFile -%>",
+    "password": "<%= $certificatePassword -%>"
   }
 }

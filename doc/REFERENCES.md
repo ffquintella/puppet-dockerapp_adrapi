@@ -113,7 +113,7 @@ Data type: `String`
 
 Configures the maximum number of results a query should return
 
-Default value: '1000'
+Default value: 1000
 
 ##### `ldap_pool_size`
 
@@ -121,7 +121,7 @@ Data type: `String`
 
 The number of ldap connections to keep open
 
-Default value: '1'
+Default value: 1
 
 ##### `ldap_bind_dn`
 
@@ -154,6 +154,22 @@ Data type: `String`
 Search filter
 
 Default value: '(&(objectClass=user)(objectClass=person)(sAMAccountName={0}))'
+
+##### `certificate_file`
+
+Data type: `String`
+
+PkCS12 file containing certificate, certificate chain and secret key
+
+Default value: 'adrapi-dev.p12'
+
+##### `certificate_password`
+
+Data type: `String`
+
+The password for the certificate file
+
+Default value: 'adrapi-dev'
 
 ## Defined types
 
