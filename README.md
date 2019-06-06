@@ -44,7 +44,7 @@ The basic use is
 include dockerapp_adrapi 
 ````
 
-All the parameters are described in doc/REFERENCES.md
+All the parameters are described in [doc/REFERENCES.md](https://github.com/ffquintella/puppet-dockerapp_adrapi/blob/master/doc/REFERENCES.md)
 
 
 ## Limitations

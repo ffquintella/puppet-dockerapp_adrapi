@@ -4,12 +4,72 @@
 #
 # @example
 #   include dockerapp_adrapi
+#
+# @param [String] service_name 
+#   The name of the container
+#
+# @param [String] version 
+#   The version of the adrapi api to install
+#
+# @param [Array] ports 
+#   The tcp ports to be used on docker format.
+#
+# @param [String] ports 
+#   The tcp ports to be used.
+#
+# @param [String] log_level 
+#   The application log level.
+# @option log_level [String] Error
+#   Only log errors
+# @option log_level [String] Warning
+#   Log errors and warnings
+# @option log_level [String] Info
+#   Log errors, warnings and informations
+# @option log_level [String] Debug
+#   Log errors, warnings and informations
+#
+# @param [Hash] sec_keys 
+#   Hash of the security authorization. (see the seckey class)
+#   If it is left undefined the file won't be managed
+#
+# @param [Array] ldap_servers 
+#   A list of ldap servers to connect to
+#
+# @param [Boolean] ldap_use_ssl 
+#   Select to use or not ssl connection to the ldap servers
+#
+# @param [String] ldap_max_results 
+#   Configures the maximum number of results a query should return
+#
+# @param [String] ldap_pool_size 
+#   The number of ldap connections to keep open
+#
+# @param [String] ldap_bind_dn 
+#   DN of the user to connecto to ldap server
+#
+# @param [String] ldap_bind_password 
+#   DN of the password of the user to connecto to ldap server
+#
+# @param [String] ldap_search_base 
+#   Search limitation
+#
+# @param [String] ldap_search_filter 
+#   Search filter
+#
 class dockerapp_adrapi (
   $service_name = 'adrapi',
   $version = '0.4.7',
   $ports = ['5001:5001'],
   $log_level = 'Warning',
   $sec_keys = undef,
+  $ldap_servers = [ 'xxx:636', 'xxx:636' ],
+  $ldap_use_ssl = true,
+  $ldap_max_results = 1000,
+  $ldap_pool_size = 1,
+  $ldap_bind_dn = 'CN=adrapi,DC=a,DC=b',
+  $ldap_bind_password = 'pwd',
+  $ldap_search_base = 'DC=a,DC=b',
+  $ldap_search_filter = '(&(objectClass=user)(objectClass=person)(sAMAccountName={0}))',
 ){
 
 include 'dockerapp'
@@ -41,7 +101,15 @@ include 'dockerapp'
 
   file {"${conf_configdir}/appsettings.json":
     content => epp('dockerapp_adrapi/appsettings.json.epp',
-      { 'log_level' => $log_level }),
+      { 'log_level'       => $log_level,
+        'ssl'             => $ldap_use_ssl,
+        'maxResults'      => $ldap_max_results,
+        'poolSize'        => $ldap_pool_size,
+        'bindDn'          => $ldap_bind_dn,
+        'bindCredentials' => $ldap_bind_password,
+        'searchBase'      => $ldap_search_base,
+        'searchFilter'    => $ldap_search_filter,
+        'servers'         => $ldap_servers }),
     require => File[$conf_configdir],
   }
 

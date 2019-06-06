@@ -4,6 +4,22 @@
 #
 # @example
 #   dockerapp_adrapi::seckey { 'xxx': }
+#
+# @param [String] service_name 
+#   The name od the service (must be the same all over the use)
+#
+# @param [String] key 
+#   The secret key part
+#
+# @param [String] id 
+#   The secret key identification
+#
+# @param [String] authorized_ip 
+#   The ip authorized to use this key
+#
+# @param [String] claims 
+#   The claims authorized for this key
+#
 define dockerapp_adrapi::seckey(
   $key,
   $id = $title,

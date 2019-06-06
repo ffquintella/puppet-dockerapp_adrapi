@@ -1,6 +1,6 @@
 {
   "name": "ffquintella-dockerapp_adrapi",
-  "version": "0.1.4",
+  "version": "0.1.12",
   "author": "Felipe Quintella",
   "summary": "This module installs ADRAPI (Active Directory Rest API) using docker",
   "license": "GPL-3.0-or-later",

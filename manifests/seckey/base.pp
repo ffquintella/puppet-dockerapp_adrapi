@@ -1,6 +1,11 @@
+# @api private
+#
 # This is an internal class do not use it direcly
 #
 # @summary Internal class used by type seckey
+#
+# @param [String] service_name 
+#   The name od the service (must be the same all over the use)
 #
 class dockerapp_adrapi::seckey::base (
   $service_name = 'adrapi',

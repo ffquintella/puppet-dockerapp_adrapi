@@ -5,8 +5,13 @@
 
 **Classes**
 
+_Public Classes_
+
 * [`dockerapp_adrapi`](#dockerapp_adrapi): This class installs the ADRAPI API using docker
-* [`dockerapp_adrapi::seckey::base`](#dockerapp_adrapiseckeybase): Internal class used by type seckey
+
+_Private Classes_
+
+* `dockerapp_adrapi::seckey::base`: Internal class used by type seckey
 
 **Defined types**
 
@@ -32,59 +37,123 @@ The following parameters are available in the `dockerapp_adrapi` class.
 
 ##### `service_name`
 
-Data type: `Any`
+Data type: `String`
 
-
+The name of the container
 
 Default value: 'adrapi'
 
 ##### `version`
 
-Data type: `Any`
+Data type: `String`
 
-
+The version of the adrapi api to install
 
 Default value: '0.4.7'
 
 ##### `ports`
 
-Data type: `Any`
+Data type: `Array`
 
+The tcp ports to be used on docker format.
 
+Default value: ['5001:5001']
+
+##### `ports`
+
+Data type: `String`
+
+The tcp ports to be used.
 
 Default value: ['5001:5001']
 
 ##### `log_level`
 
-Data type: `Any`
+Data type: `String`
 
+The application log level.
 
+Options:
+
+* **Error** `String`: Only log errors
+* **Warning** `String`: Log errors and warnings
+* **Info** `String`: Log errors, warnings and informations
+* **Debug** `String`: Log errors, warnings and informations
 
 Default value: 'Warning'
 
 ##### `sec_keys`
 
-Data type: `Any`
+Data type: `Hash`
 
-
+Hash of the security authorization. (see the seckey class)
+If it is left undefined the file won't be managed
 
 Default value: `undef`
 
-### dockerapp_adrapi::seckey::base
+##### `ldap_servers`
 
-This is an internal class do not use it direcly
+Data type: `Array`
 
-#### Parameters
+A list of ldap servers to connect to
 
-The following parameters are available in the `dockerapp_adrapi::seckey::base` class.
+Default value: [ 'xxx:636', 'xxx:636' ]
 
-##### `service_name`
+##### `ldap_use_ssl`
 
-Data type: `Any`
+Data type: `Boolean`
 
+Select to use or not ssl connection to the ldap servers
 
+Default value: `true`
 
-Default value: 'adrapi'
+##### `ldap_max_results`
+
+Data type: `String`
+
+Configures the maximum number of results a query should return
+
+Default value: '1000'
+
+##### `ldap_pool_size`
+
+Data type: `String`
+
+The number of ldap connections to keep open
+
+Default value: '1'
+
+##### `ldap_bind_dn`
+
+Data type: `String`
+
+DN of the user to connecto to ldap server
+
+Default value: 'CN=adrapi,DC=a,DC=b'
+
+##### `ldap_bind_password`
+
+Data type: `String`
+
+DN of the password of the user to connecto to ldap server
+
+Default value: 'pwd'
+
+##### `ldap_search_base`
+
+Data type: `String`
+
+Search limitation
+
+Default value: 'DC=a,DC=b'
+
+##### `ldap_search_filter`
+
+Data type: `String`
+
+Search filter
+
+Default value: '(&(objectClass=user)(objectClass=person)(sAMAccountName={0}))'
 
 ## Defined types
 
@@ -104,35 +173,35 @@ dockerapp_adrapi::seckey { 'xxx': }
 
 The following parameters are available in the `dockerapp_adrapi::seckey` defined type.
 
+##### `service_name`
+
+Data type: `String`
+
+The name od the service (must be the same all over the use)
+
 ##### `key`
 
-Data type: `Any`
+Data type: `String`
 
-
+The secret key part
 
 ##### `id`
 
-Data type: `Any`
+Data type: `String`
 
-
+The secret key identification
 
 Default value: $title
 
 ##### `authorized_ip`
 
-Data type: `Any`
+Data type: `String`
 
-
+The ip authorized to use this key
 
 ##### `claims`
 
-Data type: `Any`
+Data type: `String`
 
-
-
-##### `service_name`
-
-Data type: `Any`
-
-
+The claims authorized for this key
 

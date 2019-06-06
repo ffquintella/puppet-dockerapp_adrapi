@@ -1,4 +1,12 @@
-<%- | String  $log_level
+<%- | String  $log_level,
+      Boolean $ssl,
+      Integer $maxResults,
+      Integer $poolSize,
+      String  $bindDn, 
+      String  $bindCredentials,
+      String  $searchBase,
+      String  $searchFilter,
+      Array   $servers
 | -%>
 {
   "Logging": {
@@ -6,5 +14,20 @@
       "Default": "<%= $log_level %>"
     }
   },
-  "AllowedHosts": "*"
+  "AllowedHosts": "*",
+  "ldap": {
+    "servers": [ <%= $servers.map |$x|{ "\"${x}\""}.join(', ') %> ],
+<% if $ssl { -%>
+    "ssl":  true,
+<%} else { -%>
+    "ssl":  false,
+<%} -%>
+    "maxResults":  <%= $maxResults %>,
+    "poolSize":  <%= $poolSize %>,
+    "bindDn": "<%= $bindDn -%>",
+    "bindCredentials": "<%= $bindCredentials -%>",
+    "searchBase": "<%= $searchBase -%>",
+    "searchFilter": "<%= $searchFilter -%>",
+    "adminCn": "CN=Admins,OU=Serice,DC=labesi,DC=fgv,DC=br"
+  }
 }
