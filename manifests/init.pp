@@ -9,6 +9,7 @@ class dockerapp_adrapi (
   $version = '0.4.7',
   $ports = ['5001:5001'],
   $log_level = 'Warning',
+  $sec_keys = undef,
 ){
 
 include 'dockerapp'
@@ -30,6 +31,14 @@ include 'dockerapp'
   $conf_libdir = "${lib_dir}/${service_name}"
   $conf_logdir = "${log_dir}/${service_name}"
 
+  if $sec_keys != undef {
+    create_resources('dockerapp_adrapi::seckey', $sec_keys)
+  }else{
+    file{"${conf_configdir}/security.json":
+      content => '',
+    }
+  }
+
   file {"${conf_configdir}/appsettings.json":
     content => epp('dockerapp_adrapi/appsettings.json.epp',
       { 'log_level' => $log_level }),
@@ -38,7 +47,8 @@ include 'dockerapp'
 
   $volumes = [
     "${conf_logdir}:/var/log/adrapi",
-    "${conf_configdir}/appsettings.json:/app/appsettings.json"
+    "${conf_configdir}/appsettings.json:/app/appsettings.json",
+    "${conf_configdir}/security.json:/app/security.json",
   ]
 
   $envs = []

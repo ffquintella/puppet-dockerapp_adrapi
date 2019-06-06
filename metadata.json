@@ -1,6 +1,6 @@
 {
   "name": "ffquintella-dockerapp_adrapi",
-  "version": "0.1.1",
+  "version": "0.1.4",
   "author": "Felipe Quintella",
   "summary": "This module installs ADRAPI (Active Directory Rest API) using docker",
   "license": "GPL-3.0-or-later",
@@ -15,6 +15,10 @@
     {
       "name": "puppetlabs/docker",
       "version_requirement": ">= 3.5.0 < 4.0.0"
+    },
+    {
+      "name": "puppetlabs/concat",
+      "version_requirement": ">= 5.0.0 < 7.0.0"
     },
     {
       "name": "ffquintella/dockerapp",

@@ -6,6 +6,11 @@
 **Classes**
 
 * [`dockerapp_adrapi`](#dockerapp_adrapi): This class installs the ADRAPI API using docker
+* [`dockerapp_adrapi::seckey::base`](#dockerapp_adrapiseckeybase): Internal class used by type seckey
+
+**Defined types**
+
+* [`dockerapp_adrapi::seckey`](#dockerapp_adrapiseckey): This type creates a new security key needed to use the adrapi API
 
 ## Classes
 
@@ -20,4 +25,114 @@ Installs ADRAPI using docker
 ```puppet
 include dockerapp_adrapi
 ```
+
+#### Parameters
+
+The following parameters are available in the `dockerapp_adrapi` class.
+
+##### `service_name`
+
+Data type: `Any`
+
+
+
+Default value: 'adrapi'
+
+##### `version`
+
+Data type: `Any`
+
+
+
+Default value: '0.4.7'
+
+##### `ports`
+
+Data type: `Any`
+
+
+
+Default value: ['5001:5001']
+
+##### `log_level`
+
+Data type: `Any`
+
+
+
+Default value: 'Warning'
+
+##### `sec_keys`
+
+Data type: `Any`
+
+
+
+Default value: `undef`
+
+### dockerapp_adrapi::seckey::base
+
+This is an internal class do not use it direcly
+
+#### Parameters
+
+The following parameters are available in the `dockerapp_adrapi::seckey::base` class.
+
+##### `service_name`
+
+Data type: `Any`
+
+
+
+Default value: 'adrapi'
+
+## Defined types
+
+### dockerapp_adrapi::seckey
+
+This defined type manages the security keys needed to use the adrapi API
+
+#### Examples
+
+##### 
+
+```puppet
+dockerapp_adrapi::seckey { 'xxx': }
+```
+
+#### Parameters
+
+The following parameters are available in the `dockerapp_adrapi::seckey` defined type.
+
+##### `key`
+
+Data type: `Any`
+
+
+
+##### `id`
+
+Data type: `Any`
+
+
+
+Default value: $title
+
+##### `authorized_ip`
+
+Data type: `Any`
+
+
+
+##### `claims`
+
+Data type: `Any`
+
+
+
+##### `service_name`
+
+Data type: `Any`
+
+
 

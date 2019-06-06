@@ -27,7 +27,11 @@ This module installs docker and depends on stdlib. It also creates a series of d
 
 ### Setup Requirements **OPTIONAL**
 
-This module depends on the dockerapp module
+This module depends on the following modules:
+
+- dockerapp
+- stdlib
+- concat
 
 ### Beginning with dockerapp_adrapi
 

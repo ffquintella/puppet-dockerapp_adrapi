@@ -17,6 +17,7 @@ describe 'dockerapp_adrapi' do
       it { is_expected.to contain_file('/srv/application-data/adrapi_test') }
       it { is_expected.to contain_file('/srv/application-config/adrapi_test') }
       it { is_expected.to contain_file('/srv/application-config/adrapi_test/appsettings.json') }
+      it { is_expected.to contain_file('/srv/application-config/adrapi_test/security.json') }
       it { is_expected.to contain_file('/srv/application-lib/adrapi_test') }
       it { is_expected.to contain_file('/srv/application-log/adrapi_test') }
       it { is_expected.to contain_file('/srv/scripts/adrapi_test') }
