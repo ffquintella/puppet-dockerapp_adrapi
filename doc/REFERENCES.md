@@ -171,6 +171,14 @@ The password for the certificate file
 
 Default value: 'adrapi-dev'
 
+##### `certificate_file_content`
+
+Data type: `String`
+
+The content in base64 of the certificate file. If it is undef there will be no file creation
+
+Default value: `undef`
+
 ## Defined types
 
 ### dockerapp_adrapi::seckey

@@ -62,6 +62,9 @@
 # @param [String] certificate_password 
 #   The password for the certificate file
 #
+# @param [String] certificate_file_content 
+#   The content in base64 of the certificate file. If it is undef there will be no file creation
+#
 class dockerapp_adrapi (
   $service_name = 'adrapi',
   $version = '0.4.7',
@@ -78,6 +81,7 @@ class dockerapp_adrapi (
   $ldap_search_filter = '(&(objectClass=user)(objectClass=person)(sAMAccountName={0}))',
   $certificate_file = 'adrapi-dev.p12',
   $certificate_password = 'adrapi-dev',
+  $certificate_file_content = undef,
 ){
 
 include 'dockerapp'
@@ -123,11 +127,23 @@ include 'dockerapp'
     require => File[$conf_configdir],
   }
 
-  $volumes = [
-    "${conf_logdir}:/var/log/adrapi",
-    "${conf_configdir}/appsettings.json:/app/appsettings.json",
-    "${conf_configdir}/security.json:/app/security.json",
-  ]
+  if $certificate_file_content != undef {
+    file{"${conf_configdir}/${certificate_file}":
+      content => base64('decode', $certificate_file_content),
+    }
+    $volumes = [
+      "${conf_configdir}/${certificate_file}:/app/${certificate_file}",
+      "${conf_logdir}:/var/log/adrapi",
+      "${conf_configdir}/appsettings.json:/app/appsettings.json",
+      "${conf_configdir}/security.json:/app/security.json",
+    ]
+  }else{
+    $volumes = [
+      "${conf_logdir}:/var/log/adrapi",
+      "${conf_configdir}/appsettings.json:/app/appsettings.json",
+      "${conf_configdir}/security.json:/app/security.json",
+    ]
+  }
 
   $envs = []
 
