@@ -153,6 +153,7 @@ include 'dockerapp'
     volumes      => $volumes,
     environments => $envs,
     dir_group    => $dir_group,
+    net          => "${service_name}-net",
     dir_owner    => $dir_owner,
   }
 
