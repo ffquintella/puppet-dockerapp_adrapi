@@ -12,7 +12,13 @@
 #   The version of the adrapi api to install
 #
 # @param ports
-#   The tcp ports to be used on docker format
+#   Optional explicit docker port mappings (`host:container`). If unset, `host_port:container_port` is used.
+#
+# @param host_port
+#   Host TCP port to bind ADRAPI to when `ports` is not explicitly set
+#
+# @param container_port
+#   Container TCP port for ADRAPI when `ports` is not explicitly set
 #
 # @param log_level
 #   The application log level
@@ -63,7 +69,9 @@
 class dockerapp_adrapi (
   String $service_name = 'adrapi',
   String $version = '0.4.7',
-  Array[String] $ports = ['5001:5001'],
+  Optional[Array[String]] $ports = undef,
+  Integer[1, 65535] $host_port = 5001,
+  Integer[1, 65535] $container_port = 5001,
   Enum['Error', 'Warning', 'Info', 'Information', 'Debug', 'Trace'] $log_level = 'Warning',
   Optional[Hash] $sec_keys = undef,
   Array[String] $ldap_servers = ['127.0.0.1:389'],
@@ -83,6 +91,10 @@ class dockerapp_adrapi (
   include dockerapp
 
   $image = "ffquintella/adrapi:${version}"
+  $effective_ports = $ports ? {
+    undef   => ["${host_port}:${container_port}"],
+    default => $ports,
+  }
 
   $dir_owner = 999
   $dir_group = 999
@@ -154,7 +166,7 @@ class dockerapp_adrapi (
 
   dockerapp::run { $service_name:
     image        => $image,
-    ports        => $ports,
+    ports        => $effective_ports,
     volumes      => $volumes,
     environments => $envs,
     dir_group    => $dir_group,

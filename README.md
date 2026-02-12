@@ -32,7 +32,8 @@ include dockerapp_adrapi
 class { 'dockerapp_adrapi':
   service_name      => 'adrapi_prod',
   version           => '1.4.1',
-  ports             => ['5001:5001'],
+  host_port         => 5501,
+  container_port    => 5001,
   allowed_hosts     => '*',
   ldap_servers      => ['ldap01.example.com:389', 'ldap02.example.com:389'],
   ldap_use_ssl      => false,
@@ -41,6 +42,15 @@ class { 'dockerapp_adrapi':
   ldap_search_base  => 'DC=example,DC=com',
   ldap_search_filter=> '(&(objectClass=user)(objectClass=person)(sAMAccountName={0}))',
   ldap_admin_cn     => 'CN=Admins,OU=Service,DC=example,DC=com',
+}
+```
+
+### 1.1) Explicit docker mapping (advanced)
+
+```puppet
+class { 'dockerapp_adrapi':
+  service_name => 'adrapi_prod',
+  ports        => ['5501:5001'],
 }
 ```
 
@@ -83,6 +93,7 @@ class { 'dockerapp_adrapi':
 
 - `version`: container image tag (`ffquintella/adrapi:<version>`)
 - `ports`: Docker port mappings
+- `host_port` / `container_port`: simple port selection used when `ports` is not explicitly set
 - `allowed_hosts`: rendered to `appsettings.json` `AllowedHosts`
 - LDAP settings:
   - `ldap_servers`, `ldap_use_ssl`, `ldap_pool_size`, `ldap_max_results`
