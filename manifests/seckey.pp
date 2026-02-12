@@ -21,22 +21,21 @@
 #   The claims authorized for this key
 #
 define dockerapp_adrapi::seckey(
-  $key,
-  $id = $title,
-  $authorized_ip,
-  $claims,
-  $service_name,
+  String $key,
+  String $id = $title,
+  String $authorized_ip,
+  Array[String] $claims,
+  String $service_name,
 ) {
-
-  if!defined(Class['dockerapp_adrapi::seckey::base']){
-    class{'dockerapp_adrapi::seckey::base':
+  if !defined(Class['dockerapp_adrapi::seckey::base']) {
+    class { 'dockerapp_adrapi::seckey::base':
       service_name => $service_name,
     }
   }
 
   $config_dir = $::dockerapp::params::config_dir
   $conf_configdir = "${config_dir}/${service_name}"
-  $claims_str=to_json($claims)
+  $claims_str = to_json($claims)
 
   concat::fragment { "adrapi_security.json_${id}":
     target  => "${conf_configdir}/security.json",

@@ -1,7 +1,7 @@
 {
   "name": "ffquintella-dockerapp_adrapi",
-  "version": "1.0.3",
-  "author": "Felipe Quintella",
+  "version": "1.1.0",
+  "author": "Felipe F. Quintella",
   "summary": "This module installs ADRAPI (Active Directory Rest API) using docker",
   "license": "GPL-3.0-or-later",
   "source": "https://github.com/ffquintella/puppet-dockerapp_adrapi",
@@ -9,23 +9,37 @@
   "issues_url": "https://github.com/ffquintella/puppet-dockerapp_adrapi/issues",
   "dependencies": [
     {
-      "name": "puppetlabs/stdlib",
-      "version_requirement": ">= 4.24.0 < 6.0.0"
+      "name": "ffquintella/dockerapp",
+      "version_requirement": ">= 1.2.1 < 2.0.0"
     },
     {
-      "name": "puppetlabs/docker",
-      "version_requirement": ">= 3.5.0 < 4.0.0"
+      "name": "puppetlabs/stdlib",
+      "version_requirement": ">= 9.0.3 < 10.0.0"
     },
     {
       "name": "puppetlabs/concat",
-      "version_requirement": ">= 5.0.0 < 7.0.0"
-    },
-    {
-      "name": "ffquintella/dockerapp",
-      "version_requirement": ">= 1.0.5 < 2.0.0"
+      "version_requirement": ">= 7.0.0 < 10.0.0"
     }
   ],
   "operatingsystem_support": [
+    {
+      "operatingsystem": "Debian",
+      "operatingsystemrelease": [
+        "10"
+      ]
+    },
+    {
+      "operatingsystem": "Ubuntu",
+      "operatingsystemrelease": [
+        "18.04"
+      ]
+    },
+    {
+      "operatingsystem": "RedHat",
+      "operatingsystemrelease": [
+        "8"
+      ]
+    },
     {
       "operatingsystem": "CentOS",
       "operatingsystemrelease": [
@@ -34,12 +48,6 @@
     },
     {
       "operatingsystem": "OracleLinux",
-      "operatingsystemrelease": [
-        "7"
-      ]
-    },
-    {
-      "operatingsystem": "RedHat",
       "operatingsystemrelease": [
         "7"
       ]
@@ -54,10 +62,10 @@
   "requirements": [
     {
       "name": "puppet",
-      "version_requirement": ">= 4.10.0 < 7.0.0"
+      "version_requirement": ">= 7.24 < 9.0.0"
     }
   ],
-  "pdk-version": "1.9.1",
-  "template-url": "file:///opt/puppetlabs/pdk/share/cache/pdk-templates.git",
-  "template-ref": "1.9.1-0-g6945d31"
+  "pdk-version": "3.0.0",
+  "template-url": "pdk-default#3.0.0",
+  "template-ref": "tags/3.0.0-0-g056e50d"
 }

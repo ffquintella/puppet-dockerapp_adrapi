@@ -9,6 +9,8 @@ describe 'dockerapp_adrapi' do
         {
           version: '1.4.1',
           service_name: 'adrapi_test',
+          ldap_admin_cn: 'Administrator',
+          allowed_hosts: '*',
         }
       end
 
@@ -21,6 +23,8 @@ describe 'dockerapp_adrapi' do
       it { is_expected.to contain_file('/srv/application-lib/adrapi_test') }
       it { is_expected.to contain_file('/srv/application-log/adrapi_test') }
       it { is_expected.to contain_file('/srv/scripts/adrapi_test') }
+      it { is_expected.to contain_file('/srv/application-config/adrapi_test/appsettings.json').with_content(%r{"AllowedHosts": "\*"}) }
+      it { is_expected.to contain_file('/srv/application-config/adrapi_test/appsettings.json').with_content(%r{"adminCn": "Administrator"}) }
     end
   end
 end

@@ -1,40 +1,40 @@
-<%- | String  $log_level,
+<%- | Enum['Error', 'Warning', 'Information', 'Debug', 'Trace'] $log_level,
+      String $allowed_hosts,
       Boolean $ssl,
-      Integer $maxResults,
-      Integer $poolSize,
-      String  $bindDn, 
-      String  $bindCredentials,
-      String  $searchBase,
-      String  $searchFilter,
-      Array   $servers,
-      String  $certificateFile,
-      String  $certificatePassword
+      Integer $max_results,
+      Integer $pool_size,
+      String $bind_dn,
+      String $bind_credentials,
+      String $search_base,
+      String $search_filter,
+      String $admin_cn,
+      Array[String] $servers,
+      String $certificate_file,
+      String $certificate_password
 | -%>
 {
   "Logging": {
     "LogLevel": {
-      "Default": "<%= $log_level %>",
-      "Microsoft": "Information"
+      "Default": "<%= $log_level %>"
     }
   },
-  "AllowedHosts": "*",
-  "ldap": {
-    "servers": [ <%= $servers.map |$x|{ "\"${x}\""}.join(', ') %> ],
-<% if $ssl { -%>
-    "ssl":  true,
-<%} else { -%>
-    "ssl":  false,
-<%} -%>
-    "maxResults":  <%= $maxResults %>,
-    "poolSize":  <%= $poolSize %>,
-    "bindDn": "<%= $bindDn -%>",
-    "bindCredentials": "<%= $bindCredentials -%>",
-    "searchBase": "<%= $searchBase -%>",
-    "searchFilter": "<%= $searchFilter -%>",
-    "adminCn": "CN=Admins,OU=Serice,DC=labesi,DC=fgv,DC=br"
-  },
+  "AllowedHosts": "<%= $allowed_hosts %>",
   "certificate": {
-    "file" : "<%= $certificateFile -%>",
-    "password": "<%= $certificatePassword -%>"
+    "file": "<%= $certificate_file %>",
+    "password": "<%= $certificate_password %>"
+  },
+  "ldap": {
+    "servers": [ <%= $servers.map |$x| { "\"${x}\"" }.join(', ') %> ],
+    "ssl": <%= $ssl ? {
+      true  => 'true',
+      false => 'false',
+    } %>,
+    "poolSize": <%= $pool_size %>,
+    "bindDn": "<%= $bind_dn %>",
+    "bindCredentials": "<%= $bind_credentials %>",
+    "searchBase": "<%= $search_base %>",
+    "searchFilter": "<%= $search_filter %>",
+    "maxResults": <%= $max_results %>,
+    "adminCn": "<%= $admin_cn %>"
   }
 }
