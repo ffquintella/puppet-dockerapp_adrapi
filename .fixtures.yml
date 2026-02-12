@@ -3,8 +3,21 @@
 ---
 fixtures:
   forge_modules:
-     stdlib: "puppetlabs/stdlib"
-     docker: "puppetlabs/docker"
-     concat: "puppetlabs/concat"
-     yumrepo: "puppetlabs/yumrepo_core"
-     dockerapp: "ffquintella/dockerapp"
+    stdlib:
+      repo: "puppetlabs/stdlib"
+      ref: "9.7.0"
+    docker:
+      repo: "puppetlabs/docker"
+      ref: "10.4.0"
+    concat:
+      repo: "puppetlabs/concat"
+      ref: "9.1.0"
+    yumrepo:
+      repo: "puppetlabs/yumrepo_core"
+      ref: "1.2.0"
+    apt:
+      repo: "puppetlabs/apt"
+      ref: "9.1.0"
+    dockerapp:
+      repo: "ffquintella/dockerapp"
+      ref: "1.6.0"
