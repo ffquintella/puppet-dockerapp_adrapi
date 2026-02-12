@@ -1,58 +1,145 @@
-
 # dockerapp_adrapi
 
-This module installs the ADRAPI (Active Directory Rest API) using the docker and the dockerapp series structure.
-
-#### Table of Contents
-
-1. [Description](#description)
-2. [Setup - The basics of getting started with dockerapp_adrapi](#setup)
-    * [What dockerapp_adrapi affects](#what-dockerapp_adrapi-affects)
-    * [Setup requirements](#setup-requirements)
-    * [Beginning with dockerapp_adrapi](#beginning-with-dockerapp_adrapi)
-3. [Usage - Configuration options and additional functionality](#usage)
-4. [Limitations - OS compatibility, etc.](#limitations)
-5. [Development - Guide for contributing to the module](#development)
+This module installs and configures ADRAPI (Active Directory REST API) in Docker using the `ffquintella/dockerapp` base module.
 
 ## Description
 
-This module installs the ADRAPI (Active Directory Rest API) using the docker and the dockerapp series structure.
+The module:
 
-## Setup
+- Creates the ADRAPI runtime/config/log directories under `/srv`
+- Generates `appsettings.json` from Puppet parameters
+- Generates `security.json` (empty list or from declared API keys)
+- Runs the ADRAPI container through `dockerapp::run`
 
-### What dockerapp_adrapi affects **OPTIONAL**
+## Requirements
 
-This module installs docker and depends on stdlib. It also creates a series of directories under /srv
+- Puppet `>= 7.24 < 9.0.0`
+- `ffquintella/dockerapp` `>= 1.2.1 < 2.0.0`
+- `puppetlabs/stdlib` `>= 9.0.3 < 10.0.0`
+- `puppetlabs/concat` `>= 7.0.0 < 10.0.0`
 
+## Quick Start
 
-### Setup Requirements **OPTIONAL**
-
-This module depends on the following modules:
-
-- dockerapp
-- stdlib
-- concat
-
-### Beginning with dockerapp_adrapi
-
-
-## Usage
-
-The basic use is 
-
+```puppet
+include dockerapp_adrapi
 ```
-include dockerapp_adrapi 
-````
 
-All the parameters are described in [doc/REFERENCES.md](https://github.com/ffquintella/puppet-dockerapp_adrapi/blob/master/doc/REFERENCES.md)
+## Usage Examples
 
+### 1) Basic custom deployment
+
+```puppet
+class { 'dockerapp_adrapi':
+  service_name      => 'adrapi_prod',
+  version           => '1.4.1',
+  ports             => ['5001:5001'],
+  allowed_hosts     => '*',
+  ldap_servers      => ['ldap01.example.com:389', 'ldap02.example.com:389'],
+  ldap_use_ssl      => false,
+  ldap_bind_dn      => 'CN=svc-adrapi,OU=Service,DC=example,DC=com',
+  ldap_bind_password=> 'super-secret',
+  ldap_search_base  => 'DC=example,DC=com',
+  ldap_search_filter=> '(&(objectClass=user)(objectClass=person)(sAMAccountName={0}))',
+  ldap_admin_cn     => 'CN=Admins,OU=Service,DC=example,DC=com',
+}
+```
+
+### 2) Configure API keys (`security.json`) with `sec_keys`
+
+```puppet
+class { 'dockerapp_adrapi':
+  service_name => 'adrapi_prod',
+  sec_keys     => {
+    'monitoring' => {
+      key           => 'monitor-secret-key',
+      id            => 'monitoring',
+      authorized_ip => '10.10.10.10',
+      claims        => ['isMonitor'],
+      service_name  => 'adrapi_prod',
+    },
+    'admin' => {
+      key           => 'admin-secret-key',
+      id            => 'admin',
+      authorized_ip => '10.10.10.20',
+      claims        => ['isAdministrator'],
+      service_name  => 'adrapi_prod',
+    },
+  },
+}
+```
+
+### 3) Provide certificate file content (base64)
+
+```puppet
+class { 'dockerapp_adrapi':
+  service_name              => 'adrapi_prod',
+  certificate_file          => 'adrapi-prod.p12',
+  certificate_password      => 'change-me',
+  certificate_file_content  => '<base64-pkcs12-content>',
+}
+```
+
+## Important Parameters
+
+- `version`: container image tag (`ffquintella/adrapi:<version>`)
+- `ports`: Docker port mappings
+- `allowed_hosts`: rendered to `appsettings.json` `AllowedHosts`
+- LDAP settings:
+  - `ldap_servers`, `ldap_use_ssl`, `ldap_pool_size`, `ldap_max_results`
+  - `ldap_bind_dn`, `ldap_bind_password`, `ldap_search_base`, `ldap_search_filter`, `ldap_admin_cn`
+- Certificate settings:
+  - `certificate_file`, `certificate_password`, `certificate_file_content`
+- `sec_keys`: optional hash to build `security.json`; if omitted, `security.json` is `[]`
+
+Full generated reference: `doc/REFERENCES.md`
+
+## Development / Release Workflow
+
+### Test
+
+```bash
+make test
+```
+
+### Validate
+
+```bash
+make validate
+```
+
+### Build package (Regent)
+
+```bash
+make build
+```
+
+### Publish to Puppet Forge
+
+```bash
+make publish
+```
+
+`make publish` will:
+
+1. Build with `regent`
+2. Ask for Puppet Forge API key if not already set in env
+3. Publish using `puppet-blacksmith`
+
+Accepted credential env vars:
+
+- `BLACKSMITH_FORGE_API_KEY`
+- `BLACKSMITH_FORGE_TOKEN`
+- `PUPPET_FORGE_API_KEY` (mapped automatically)
+
+### Bump version
+
+```bash
+make bump-major
+make bump-minor
+make bump-patch
+```
 
 ## Limitations
 
-TBD
-
-## Development
-
-We try to keep our modules as tested as possible and follow the lint sugestion. So before submitting any pull request, please run the unit tests and validation
-
-
+- Module behavior depends on the `dockerapp` base module defaults and structure.
+- `security.json` is managed either as an empty list or via declared `sec_keys` entries.
