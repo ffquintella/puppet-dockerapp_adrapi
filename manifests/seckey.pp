@@ -1,11 +1,14 @@
-# This defined type manages the LEGACY `security.json` entries.
+# @api private
+#
+# DEPRECATED: This defined type writes the LEGACY `security.json` entries.
 #
 # Since adrapi 1.5.0 API keys live in an Argon2id-hashed SQLite store; the app
-# imports `security.json` once on startup and renames it. New deployments should
-# use `dockerapp_adrapi::api_key` instead, which manages the SQLite store
-# directly via the `AdrapiApiKeys` CLI.
+# imports `security.json` once on startup and renames it. New deployments must
+# use `dockerapp_adrapi::api_key`, which manages the SQLite store directly via
+# the `AdrapiApiKeys` CLI. This type is kept only to support one-shot migration
+# and will be removed in a future major release.
 #
-# @summary [Legacy] Write a `security.json` entry for one-shot import
+# @summary [Deprecated] Write a `security.json` entry for one-shot import
 #
 # @example
 #   dockerapp_adrapi::seckey { 'xxx': }
