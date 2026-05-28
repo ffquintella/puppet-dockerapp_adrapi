@@ -46,9 +46,13 @@ define dockerapp_adrapi::api_key (
   $claims_arg = join($claims, ',')
   $exec_base  = "docker exec ${service_name} dotnet /app/tools/AdrapiApiKeys.dll"
 
+  # Skip (don't fail) when the container isn't running yet — see app_secret.pp for rationale.
+  $container_running = "test \"$(docker inspect -f '{{.State.Running}}' ${service_name} 2>/dev/null)\" = 'true'"
+
   if $ensure == 'present' {
     exec { "adrapi-api-key-${service_name}-${key_id}":
       command => "${exec_base} key add --keyid '${key_id}' --ip '${authorized_ip}' --claims '${claims_arg}' --secret '${secret}'",
+      onlyif  => $container_running,
       unless  => "${exec_base} key verify --keyid '${key_id}' --secret '${secret}'",
       path    => ['/bin', '/sbin', '/usr/bin', '/usr/sbin', '/usr/local/bin'],
       require => Dockerapp::Run[$service_name],
@@ -56,7 +60,7 @@ define dockerapp_adrapi::api_key (
   } else {
     exec { "adrapi-api-key-${service_name}-${key_id}-remove":
       command => "${exec_base} key remove --keyid '${key_id}' --yes",
-      onlyif  => "${exec_base} key list | grep -q '^${key_id}\\b'",
+      onlyif  => "${container_running} && ${exec_base} key list | grep -q '^${key_id}\\b'",
       path    => ['/bin', '/sbin', '/usr/bin', '/usr/sbin', '/usr/local/bin'],
       require => Dockerapp::Run[$service_name],
     }

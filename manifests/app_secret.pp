@@ -43,9 +43,15 @@ define dockerapp_adrapi::app_secret (
   # don't handle ':' in resource titles cleanly.
   $title_key = regsubst($resolved_key, ':', '__', 'G')
 
+  # Skip (don't fail) when the container isn't running yet. Dockerapp::Run sub-resources
+  # can converge before the container is actually up on first run or after an external
+  # `docker rm`; on the next puppet run the container will be live and secrets will sync.
+  $container_running = "test \"$(docker inspect -f '{{.State.Running}}' ${service_name} 2>/dev/null)\" = 'true'"
+
   if $ensure == 'present' {
     exec { "adrapi-app-secret-${service_name}-${title_key}":
       command => "${exec_base} set --key '${resolved_key}' --value '${value}'",
+      onlyif  => $container_running,
       unless  => "test \"$(${exec_base} get --key '${resolved_key}' 2>/dev/null)\" = '${value}'",
       path    => ['/bin', '/sbin', '/usr/bin', '/usr/sbin', '/usr/local/bin'],
       require => Dockerapp::Run[$service_name],
@@ -53,7 +59,7 @@ define dockerapp_adrapi::app_secret (
   } else {
     exec { "adrapi-app-secret-${service_name}-${title_key}-remove":
       command => "${exec_base} remove --key '${resolved_key}' --yes",
-      onlyif  => "${exec_base} get --key '${resolved_key}' >/dev/null 2>&1",
+      onlyif  => "${container_running} && ${exec_base} get --key '${resolved_key}' >/dev/null 2>&1",
       path    => ['/bin', '/sbin', '/usr/bin', '/usr/sbin', '/usr/local/bin'],
       require => Dockerapp::Run[$service_name],
     }

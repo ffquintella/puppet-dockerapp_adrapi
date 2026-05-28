@@ -36,6 +36,9 @@ define dockerapp_adrapi::ldap_pin (
   $exec_base = "docker exec ${service_name} dotnet /app/tools/AdrapiLdapCertPin.dll"
   $host      = regsubst($target, ':[0-9]+$', '')
 
+  # Skip (don't fail) when the container isn't running yet — see app_secret.pp for rationale.
+  $container_running = "test \"$(docker inspect -f '{{.State.Running}}' ${service_name} 2>/dev/null)\" = 'true'"
+
   if $ensure == 'present' {
     $note_arg = $note ? {
       undef   => '',
@@ -43,6 +46,7 @@ define dockerapp_adrapi::ldap_pin (
     }
     exec { "adrapi-ldap-pin-${service_name}-${target}":
       command => "${exec_base} '${target}' ${note_arg}--yes",
+      onlyif  => $container_running,
       unless  => "${exec_base} --list | grep -q '^${host}\\b'",
       path    => ['/bin', '/sbin', '/usr/bin', '/usr/sbin', '/usr/local/bin'],
       require => Dockerapp::Run[$service_name],
@@ -52,7 +56,7 @@ define dockerapp_adrapi::ldap_pin (
       # `--remove <host>` removes all pins for the host. If finer granularity is needed,
       # pass the sha through the title and split it here.
       command => "${exec_base} --remove '${host}'",
-      onlyif  => "${exec_base} --list | grep -q '^${host}\\b'",
+      onlyif  => "${container_running} && ${exec_base} --list | grep -q '^${host}\\b'",
       path    => ['/bin', '/sbin', '/usr/bin', '/usr/sbin', '/usr/local/bin'],
       require => Dockerapp::Run[$service_name],
     }
