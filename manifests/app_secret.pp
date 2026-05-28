@@ -34,7 +34,7 @@ define dockerapp_adrapi::app_secret (
 ) {
   include dockerapp_adrapi::cli
 
-  $exec_base = "docker exec ${service_name} dotnet /app/tools/AdrapiApiKeys.dll secret"
+  $exec_base = "docker exec ${service_name} dotnet /app/adrapi-api-keys.dll secret"
   # Strip "service_name:" prefix from titles like "adrapi:ldap:bindDn" so the CLI sees
   # only the configuration key.
   $resolved_key = regsubst($key, "^${service_name}:", '')
@@ -50,16 +50,16 @@ define dockerapp_adrapi::app_secret (
 
   if $ensure == 'present' {
     exec { "adrapi-app-secret-${service_name}-${title_key}":
-      command => "${exec_base} set --key '${resolved_key}' --value '${value}'",
+      command => "${exec_base} set --name '${resolved_key}' --value '${value}'",
       onlyif  => $container_running,
-      unless  => "test \"$(${exec_base} get --key '${resolved_key}' 2>/dev/null)\" = '${value}'",
+      unless  => "test \"$(${exec_base} get --name '${resolved_key}' 2>/dev/null)\" = '${value}'",
       path    => ['/bin', '/sbin', '/usr/bin', '/usr/sbin', '/usr/local/bin'],
       require => Dockerapp::Run[$service_name],
     }
   } else {
     exec { "adrapi-app-secret-${service_name}-${title_key}-remove":
-      command => "${exec_base} remove --key '${resolved_key}' --yes",
-      onlyif  => "${container_running} && ${exec_base} get --key '${resolved_key}' >/dev/null 2>&1",
+      command => "${exec_base} remove --name '${resolved_key}' --yes",
+      onlyif  => "${container_running} && ${exec_base} get --name '${resolved_key}' >/dev/null 2>&1",
       path    => ['/bin', '/sbin', '/usr/bin', '/usr/sbin', '/usr/local/bin'],
       require => Dockerapp::Run[$service_name],
     }
