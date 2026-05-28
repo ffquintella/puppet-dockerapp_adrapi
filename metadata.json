@@ -1,6 +1,6 @@
 {
   "name": "ffquintella-dockerapp_adrapi",
-  "version": "1.2.2",
+  "version": "2.0.0",
   "author": "Felipe F. Quintella",
   "summary": "This module installs ADRAPI (Active Directory Rest API) using docker",
   "license": "GPL-3.0-or-later",
@@ -10,7 +10,7 @@
   "dependencies": [
     {
       "name": "ffquintella/dockerapp",
-      "version_requirement": ">= 1.2.1 < 2.0.0"
+      "version_requirement": ">= 1.7.1 < 2.0.0"
     },
     {
       "name": "puppetlabs/stdlib",
@@ -37,19 +37,24 @@
     {
       "operatingsystem": "RedHat",
       "operatingsystemrelease": [
-        "8"
+        "8",
+        "9"
       ]
     },
     {
       "operatingsystem": "CentOS",
       "operatingsystemrelease": [
-        "7"
+        "7",
+        "8",
+        "9"
       ]
     },
     {
       "operatingsystem": "OracleLinux",
       "operatingsystemrelease": [
-        "7"
+        "7",
+        "8",
+        "9"
       ]
     },
     {
@@ -57,12 +62,30 @@
       "operatingsystemrelease": [
         "7"
       ]
+    },
+    {
+      "operatingsystem": "Rocky",
+      "operatingsystemrelease": [
+        "8",
+        "9"
+      ]
+    },
+    {
+      "operatingsystem": "AlmaLinux",
+      "operatingsystemrelease": [
+        "8",
+        "9"
+      ]
     }
   ],
   "requirements": [
     {
       "name": "puppet",
       "version_requirement": ">= 7.24 < 9.0.0"
+    },
+    {
+      "name": "openvox",
+      "version_requirement": ">= 8.0.0"
     }
   ],
   "pdk-version": "3.0.0",

@@ -20,4 +20,4 @@ fixtures:
       ref: "9.1.0"
     dockerapp:
       repo: "ffquintella/dockerapp"
-      ref: "1.6.0"
+      ref: "1.7.1"

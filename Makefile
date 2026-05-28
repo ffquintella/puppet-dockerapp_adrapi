@@ -28,7 +28,7 @@ fixtures:
 	$(RAKE) spec_prep
 
 test: fixtures
-	$(REGENT) test . --pattern "$(REGENT_TEST_PATTERN)"
+	$(REGENT) test . --pattern "$(REGENT_TEST_PATTERN)" --coverage
 
 validate:
 	$(RAKE) validate

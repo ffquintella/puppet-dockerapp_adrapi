@@ -10,6 +10,7 @@ The module:
 - Generates `appsettings.json` from Puppet parameters
 - Generates `security.json` (empty list or from declared API keys)
 - Runs the ADRAPI container through `dockerapp::run`
+- Mounts managed appsettings to both `/app/appsettings.json` and `/app/appsettings.Development.json` (read-only)
 
 ## Requirements
 

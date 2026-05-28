@@ -3,14 +3,18 @@
       Boolean $ssl,
       Integer $max_results,
       Integer $pool_size,
-      String $bind_dn,
-      String $bind_credentials,
       String $search_base,
       String $search_filter,
       String $admin_cn,
       Array[String] $servers,
       String $certificate_file,
-      String $certificate_password
+      String $database_file,
+      String $seed_file,
+      String $legacy_json_file,
+      String $ldap_pin_store,
+      Integer $rate_limit_permit,
+      Integer $rate_limit_window_seconds,
+      Integer $rate_limit_segments_per_window
 | -%>
 {
   "Logging": {
@@ -20,8 +24,7 @@
   },
   "AllowedHosts": "<%= $allowed_hosts %>",
   "certificate": {
-    "file": "<%= $certificate_file %>",
-    "password": "<%= $certificate_password %>"
+    "file": "<%= $certificate_file %>"
   },
   "ldap": {
     "servers": [ <%= $servers.map |$x| { "\"${x}\"" }.join(', ') %> ],
@@ -30,11 +33,22 @@
       false => 'false',
     } %>,
     "poolSize": <%= $pool_size %>,
-    "bindDn": "<%= $bind_dn %>",
-    "bindCredentials": "<%= $bind_credentials %>",
     "searchBase": "<%= $search_base %>",
     "searchFilter": "<%= $search_filter %>",
     "maxResults": <%= $max_results %>,
-    "adminCn": "<%= $admin_cn %>"
+    "adminCn": "<%= $admin_cn %>",
+    "pinStore": "<%= $ldap_pin_store %>"
+  },
+  "security": {
+    "databaseFile": "<%= $database_file %>",
+    "seedFile": "<%= $seed_file %>",
+    "legacyJsonFile": "<%= $legacy_json_file %>"
+  },
+  "rateLimit": {
+    "auth": {
+      "permitLimit": <%= $rate_limit_permit %>,
+      "windowSeconds": <%= $rate_limit_window_seconds %>,
+      "segmentsPerWindow": <%= $rate_limit_segments_per_window %>
+    }
   }
 }

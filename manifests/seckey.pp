@@ -1,6 +1,11 @@
-# This defined type manages the security keys needed to use the adrapi API
+# This defined type manages the LEGACY `security.json` entries.
 #
-# @summary This type creates a new security key needed to use the adrapi API
+# Since adrapi 1.5.0 API keys live in an Argon2id-hashed SQLite store; the app
+# imports `security.json` once on startup and renames it. New deployments should
+# use `dockerapp_adrapi::api_key` instead, which manages the SQLite store
+# directly via the `AdrapiApiKeys` CLI.
+#
+# @summary [Legacy] Write a `security.json` entry for one-shot import
 #
 # @example
 #   dockerapp_adrapi::seckey { 'xxx': }
@@ -33,7 +38,7 @@ define dockerapp_adrapi::seckey(
     }
   }
 
-  $config_dir = $::dockerapp::params::config_dir
+  $config_dir = $dockerapp::params::config_dir
   $conf_configdir = "${config_dir}/${service_name}"
   $claims_str = to_json($claims)
 

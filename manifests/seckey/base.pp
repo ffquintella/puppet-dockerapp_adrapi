@@ -14,10 +14,10 @@ class dockerapp_adrapi::seckey::base (
     include stdlib
   }
   if !defined(Class['dockerapp::params']) {
-    include ::dockerapp::params
+    include dockerapp::params
   }
 
-  $config_dir = $::dockerapp::params::config_dir
+  $config_dir = $dockerapp::params::config_dir
   $conf_configdir = "${config_dir}/${service_name}"
 
   if !defined(File[$conf_configdir]) {
