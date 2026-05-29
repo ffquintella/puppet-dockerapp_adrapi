@@ -161,9 +161,9 @@ the module mounts it as-is (read-only):
 ```puppet
 class { 'dockerapp_adrapi':
   service_name           => 'adrapi_prod',
-  certificate_file       => 'adrapi-fgv-dev.p12',
+  certificate_file       => 'adrapi-prod.p12',
   certificate_password   => 'change-me',
-  certificate_file_path  => '/srv/application-config/adrapi_prod/adrapi-fgv-dev.p12',
+  certificate_file_path  => '/srv/application-config/adrapi_prod/adrapi-prod.p12',
 }
 ```
 
