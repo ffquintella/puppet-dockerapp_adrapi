@@ -12,13 +12,19 @@
 #   The version of the adrapi api to install
 #
 # @param ports
-#   Optional explicit docker port mappings (`host:container`). If unset, `host_port:container_port` is used.
+#   Optional explicit docker port mappings (`host:container`). When set, this overrides
+#   `http_port`/`https_port` entirely - use it only if you need full control of the
+#   published mappings.
 #
-# @param host_port
-#   Host TCP port to bind ADRAPI to when `ports` is not explicitly set
+# @param http_port
+#   Host TCP port mapped to the container's fixed HTTP listener (container port 6000). Set
+#   to `undef` to not publish the cleartext HTTP endpoint. Ignored when `ports` is set.
 #
-# @param container_port
-#   Container TCP port for ADRAPI when `ports` is not explicitly set
+# @param https_port
+#   Host TCP port mapped to the container's fixed HTTPS listener (container port 6001). Set
+#   to `undef` to not publish the HTTPS endpoint. Ignored when `ports` is set. The ADRAPI
+#   image hardcodes its Kestrel listeners to 6000/6001 (see adrapi `Program.cs`), so the
+#   container-side ports are not configurable - only the host ports they map to are.
 #
 # @param log_level
 #   The application log level
@@ -119,8 +125,8 @@ class dockerapp_adrapi (
   String $service_name = 'adrapi',
   String $version = '1.5.0',
   Optional[Array[String]] $ports = undef,
-  Integer[1, 65535] $host_port = 5001,
-  Integer[1, 65535] $container_port = 5001,
+  Optional[Integer[1, 65535]] $http_port = 6000,
+  Optional[Integer[1, 65535]] $https_port = 6001,
   Enum['Error', 'Warning', 'Info', 'Information', 'Debug', 'Trace'] $log_level = 'Warning',
   Optional[Hash] $sec_keys = undef,
   Hash $api_keys = {},
@@ -151,8 +157,23 @@ class dockerapp_adrapi (
   include dockerapp
 
   $image = "ffquintella/adrapi:${version}"
+
+  # ADRAPI's Kestrel host hardcodes its listeners to container port 6000 (HTTP) and 6001
+  # (HTTPS) - see adrapi `Program.cs`. The container-side ports are therefore fixed; callers
+  # only choose which host ports they are published on (or override everything via `ports`).
+  $container_http_port  = 6000
+  $container_https_port = 6001
+
+  $http_mapping = $http_port ? {
+    undef   => [],
+    default => ["${http_port}:${container_http_port}"],
+  }
+  $https_mapping = $https_port ? {
+    undef   => [],
+    default => ["${https_port}:${container_https_port}"],
+  }
   $effective_ports = $ports ? {
-    undef   => ["${host_port}:${container_port}"],
+    undef   => flatten([$http_mapping, $https_mapping]),
     default => $ports,
   }
 

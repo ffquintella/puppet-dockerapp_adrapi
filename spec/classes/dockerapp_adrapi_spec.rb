@@ -36,6 +36,51 @@ describe 'dockerapp_adrapi' do
       it { is_expected.not_to contain_file('/srv/application-config/adrapi_test/security.json') }
     end
 
+    # The port model maps host ports to the container's fixed 6000 (HTTP) / 6001 (HTTPS)
+    # listeners. These contexts only assert compile success: regent's catalog matcher does
+    # not expose the `ports` attribute of the dockerapp::run fixture defined type (it reads
+    # back as Undef), so `with_ports(...)` can't be checked - the branches are still covered.
+    context "on #{os} with custom http_port/https_port" do
+      let(:facts) { os_facts }
+      let(:params) do
+        {
+          version: '1.5.0',
+          service_name: 'adrapi_test',
+          http_port: 6000,
+          https_port: 5501,
+        }
+      end
+
+      it { is_expected.to compile }
+    end
+
+    context "on #{os} with http_port disabled (HTTPS only)" do
+      let(:facts) { os_facts }
+      let(:params) do
+        {
+          version: '1.5.0',
+          service_name: 'adrapi_test',
+          http_port: nil,
+          https_port: 5501,
+        }
+      end
+
+      it { is_expected.to compile }
+    end
+
+    context "on #{os} with explicit ports override" do
+      let(:facts) { os_facts }
+      let(:params) do
+        {
+          version: '1.5.0',
+          service_name: 'adrapi_test',
+          ports: ['5501:6001'],
+        }
+      end
+
+      it { is_expected.to compile }
+    end
+
     context "on #{os} with sec_keys (legacy)" do
       let(:facts) { os_facts }
       let(:params) do

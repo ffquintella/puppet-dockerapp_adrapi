@@ -52,8 +52,8 @@ include dockerapp_adrapi
 class { 'dockerapp_adrapi':
   service_name       => 'adrapi_prod',
   version            => '1.5.0',
-  host_port          => 5501,
-  container_port     => 5001,
+  http_port          => 6000,
+  https_port         => 5501,
   allowed_hosts      => '*',
   ldap_servers       => ['ldap01.example.com:389', 'ldap02.example.com:389'],
   ldap_use_ssl       => false,
@@ -70,12 +70,22 @@ written to `appsettings.json` — when non-empty they are pushed into the
 encrypted `app_secrets` table via `AdrapiApiKeys secret set` and exposed back to
 the app through `SqliteSecretsConfigurationProvider`.
 
+The container always listens on **6000 (HTTP)** and **6001 (HTTPS)** internally — these
+are hardcoded in the ADRAPI image's Kestrel host and are not configurable. `http_port` and
+`https_port` choose the **host** ports those listeners are published on. Set either to
+`undef` to not publish it (e.g. `http_port => undef` to expose HTTPS only). To reach the
+API over TLS at `https://<host>:5501` with the example above, you also need a valid
+certificate — see [§5](#5-provide-the-https-certificate).
+
 ### 1.1) Explicit docker port mapping
+
+`ports` overrides `http_port`/`https_port` entirely. The right-hand side must be the
+container's fixed listeners (6000/6001):
 
 ```puppet
 class { 'dockerapp_adrapi':
   service_name => 'adrapi_prod',
-  ports        => ['5501:5001'],
+  ports        => ['5501:6001', '6000:6000'],   # host:container — container is always 6000/6001
 }
 ```
 
@@ -174,8 +184,10 @@ With neither set, the image's built-in `adrapi-dev.p12` is used.
 
 - `version`: container image tag (`ffquintella/adrapi:<version>`). Must be
   `>= 1.5.0`.
-- `ports`: Docker port mappings.
-- `host_port` / `container_port`: used when `ports` is not explicitly set.
+- `ports`: explicit Docker port mappings; overrides `http_port`/`https_port`. Container
+  side must be `6000` (HTTP) / `6001` (HTTPS) — these are fixed in the image.
+- `http_port` / `https_port`: host ports mapped to the container's fixed `6000`/`6001`
+  listeners. `undef` disables publishing that listener.
 - `allowed_hosts`: rendered to `appsettings.json` `AllowedHosts`.
 - LDAP settings:
   - `ldap_servers`, `ldap_use_ssl`, `ldap_pool_size`, `ldap_max_results`
