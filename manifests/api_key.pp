@@ -44,7 +44,7 @@ define dockerapp_adrapi::api_key (
   include dockerapp_adrapi::cli
 
   $claims_arg = join($claims, ',')
-  $exec_base  = "docker exec ${service_name} dotnet /app/adrapi-api-keys.dll"
+  $exec_base  = "docker exec ${service_name} /app/adrapi-api-keys"
 
   # Skip (don't fail) when the container isn't running yet — see app_secret.pp for rationale.
   $container_running = "test \"$(docker inspect -f '{{.State.Running}}' ${service_name} 2>/dev/null)\" = 'true'"

@@ -172,6 +172,34 @@ class dockerapp_adrapi (
     mode   => '0750',
   }
 
+  # Host-callable wrappers for the standalone CLIs shipped inside the container.
+  # They forward all arguments to `/app/<cli>` via `docker exec`, so operators can
+  # run e.g. `adrapi-api-keys key list` directly on the host. Declared explicitly
+  # (not via `.each`) to stay clear of the regent hash-expansion caveat noted below.
+  file { '/usr/local/bin/adrapi-api-keys':
+    ensure  => file,
+    owner   => 'root',
+    group   => 'root',
+    mode    => '0755',
+    content => epp('dockerapp_adrapi/adrapi-cli-wrapper.sh.epp', {
+      'service_name' => $service_name,
+      'container_cli' => '/app/adrapi-api-keys',
+      'wrapper_name'  => 'adrapi-api-keys',
+    }),
+  }
+
+  file { '/usr/local/bin/adrapi-ldap-cert-pin':
+    ensure  => file,
+    owner   => 'root',
+    group   => 'root',
+    mode    => '0755',
+    content => epp('dockerapp_adrapi/adrapi-cli-wrapper.sh.epp', {
+      'service_name' => $service_name,
+      'container_cli' => '/app/adrapi-ldap-cert-pin',
+      'wrapper_name'  => 'adrapi-ldap-cert-pin',
+    }),
+  }
+
   # Legacy security.json - only managed when the legacy hash is provided. The app imports
   # it on next start and renames it to security.json.imported.<ts>.
   if $sec_keys != undef {

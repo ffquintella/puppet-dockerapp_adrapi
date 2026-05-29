@@ -1,0 +1,29 @@
+<%- | String $service_name, String $container_cli, String $wrapper_name | -%>
+#!/bin/sh
+# Managed by Puppet (dockerapp_adrapi) - do not edit by hand.
+#
+# Host-side wrapper for the standalone ADRAPI CLI shipped inside the
+# '<%= $service_name %>' container. Lets operators invoke the CLI directly on
+# the host instead of typing the full `docker exec ...` incantation, e.g.:
+#
+#   <%= $wrapper_name %> --help
+#   <%= $wrapper_name %> key list
+#
+# Every argument is forwarded verbatim to <%= $container_cli %> inside the
+# container. An interactive TTY is allocated only when the host session has
+# one, so the wrapper is equally usable from a script or a login shell.
+set -eu
+
+container='<%= $service_name %>'
+cli='<%= $container_cli %>'
+
+if [ "$(docker inspect -f '{{.State.Running}}' "${container}" 2>/dev/null)" != 'true' ]; then
+  echo "<%= $wrapper_name %>: container '${container}' is not running" >&2
+  exit 1
+fi
+
+if [ -t 0 ] && [ -t 1 ]; then
+  exec docker exec -it "${container}" "${cli}" "$@"
+else
+  exec docker exec -i "${container}" "${cli}" "$@"
+fi

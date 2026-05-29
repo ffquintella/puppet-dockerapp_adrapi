@@ -21,6 +21,10 @@ The module:
     (`AdrapiApiKeys secret set/get/remove`).
   - `dockerapp_adrapi::ldap_pin` — TOFU LDAPS certificate pinning
     (`AdrapiLdapCertPin <host:port> --yes`).
+- Installs host-callable wrappers for the standalone in-container CLIs at
+  `/usr/local/bin/adrapi-api-keys` and `/usr/local/bin/adrapi-ldap-cert-pin`,
+  so operators can run them directly on the host (they forward to the container
+  via `docker exec`).
 - Runs the ADRAPI container through `dockerapp::run`.
 - Mounts managed `appsettings.json` at both `/app/appsettings.json` and
   `/app/appsettings.Development.json` (read-only).
@@ -118,6 +122,20 @@ dockerapp_adrapi::app_secret { 'ldap:bindCredentials':
   service_name => 'adrapi_prod',
 }
 ```
+
+### 6) Run the CLIs directly on the host
+
+The module installs thin wrappers that forward to the standalone CLIs inside the
+running container, so no `docker exec` boilerplate is needed:
+
+```sh
+adrapi-api-keys key list
+adrapi-api-keys --help
+adrapi-ldap-cert-pin --list
+```
+
+Both wrappers target the container named by `service_name` (default `adrapi`)
+and exit non-zero if it is not running.
 
 ### 5) Provide certificate file content (base64)
 

@@ -33,7 +33,7 @@ define dockerapp_adrapi::ldap_pin (
 ) {
   include dockerapp_adrapi::cli
 
-  $exec_base = "docker exec ${service_name} dotnet /app/adrapi-ldap-cert-pin.dll"
+  $exec_base = "docker exec ${service_name} /app/adrapi-ldap-cert-pin"
   $host      = regsubst($target, ':[0-9]+$', '')
 
   # Skip (don't fail) when the container isn't running yet — see app_secret.pp for rationale.

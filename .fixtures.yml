@@ -12,7 +12,7 @@ fixtures:
     concat:
       repo: "puppetlabs/concat"
       ref: "9.1.0"
-    yumrepo:
+    yumrepo_core:
       repo: "puppetlabs/yumrepo_core"
       ref: "1.2.0"
     apt:

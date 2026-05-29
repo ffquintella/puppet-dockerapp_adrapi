@@ -34,7 +34,7 @@ define dockerapp_adrapi::app_secret (
 ) {
   include dockerapp_adrapi::cli
 
-  $exec_base = "docker exec ${service_name} dotnet /app/adrapi-api-keys.dll secret"
+  $exec_base = "docker exec ${service_name} /app/adrapi-api-keys secret"
   # Strip "service_name:" prefix from titles like "adrapi:ldap:bindDn" so the CLI sees
   # only the configuration key.
   $resolved_key = regsubst($key, "^${service_name}:", '')
