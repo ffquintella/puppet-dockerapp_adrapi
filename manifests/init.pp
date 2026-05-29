@@ -82,7 +82,15 @@
 #   `app_secret` (key `certificate:password`).
 #
 # @param certificate_file_content
-#   The content in base64 of the certificate file. If it is undef there will be no file creation
+#   Base64-encoded content of the certificate. When set, the module writes the decoded `.p12` to
+#   `${config_dir}/${service_name}/${certificate_file}` and mounts it into the container at
+#   `/app/${certificate_file}`. Mutually exclusive with `certificate_file_path`.
+#
+# @param certificate_file_path
+#   Absolute path to an existing certificate file on the host (managed out-of-band). When set, the module
+#   bind-mounts that path into the container at `/app/${certificate_file}` (read-only) so Kestrel can load
+#   it for the HTTPS listener (port 6001). The file must exist on the host, otherwise docker creates an
+#   empty directory at the source path. Mutually exclusive with `certificate_file_content`.
 #
 # @param database_file
 #   Path (inside the container) to the SQLite store for API keys and encrypted app secrets.
@@ -131,6 +139,7 @@ class dockerapp_adrapi (
   String $certificate_file = 'adrapi-dev.p12',
   String $certificate_password = '',
   Optional[String] $certificate_file_content = undef,
+  Optional[Stdlib::Absolutepath] $certificate_file_path = undef,
   String $database_file = 'cfg/api-keys.db',
   String $seed_file = 'cfg/.seed',
   String $legacy_json_file = 'security.json',
@@ -275,10 +284,30 @@ class dockerapp_adrapi (
     create_resources('dockerapp_adrapi::ldap_pin', $ldap_pins, { 'service_name' => $service_name })
   }
 
+  # The HTTPS certificate can be supplied two ways: as base64 content (we write the
+  # file) or as an existing host path (we mount it as-is). Whichever is used, the
+  # source is bind-mounted into the container at /app/${certificate_file} - the path
+  # Kestrel loads via the `certificate:file` config key. With neither set, the
+  # baked-in `adrapi-dev.p12` stays in play and nothing is mounted (mounting a
+  # non-existent source would make docker create an empty dir there).
+  if $certificate_file_content != undef and $certificate_file_path != undef {
+    fail('dockerapp_adrapi: set only one of certificate_file_content or certificate_file_path')
+  }
+
   if $certificate_file_content != undef {
     file { "${conf_configdir}/${certificate_file}":
       content => base64('decode', $certificate_file_content),
     }
+    $cert_source = "${conf_configdir}/${certificate_file}"
+  } elsif $certificate_file_path != undef {
+    $cert_source = $certificate_file_path
+  } else {
+    $cert_source = undef
+  }
+
+  $cert_volumes = $cert_source ? {
+    undef   => [],
+    default => ["${cert_source}:/app/${certificate_file}:ro"],
   }
 
   $volumes = flatten([
@@ -290,10 +319,7 @@ class dockerapp_adrapi (
       undef   => [],
       default => ["${conf_configdir}/security.json:/app/security.json:rw"],
     },
-    $certificate_file_content ? {
-      undef   => [],
-      default => ["${conf_configdir}/${certificate_file}:/app/${certificate_file}:ro"],
-    },
+    $cert_volumes,
   ])
 
   $envs = []

@@ -137,7 +137,14 @@ adrapi-ldap-cert-pin --list
 Both wrappers target the container named by `service_name` (default `adrapi`)
 and exit non-zero if it is not running.
 
-### 5) Provide certificate file content (base64)
+### 5) Provide the HTTPS certificate
+
+The `.p12` Kestrel loads for the HTTPS listener (container port `6001`) can be
+supplied two ways. In both cases it is mounted into the container at
+`/app/${certificate_file}`, and `certificate_file` must match the name referenced
+by `appsettings.json`.
+
+**a) By base64 content** — the module writes the file under the config dir:
 
 ```puppet
 class { 'dockerapp_adrapi':
@@ -147,6 +154,21 @@ class { 'dockerapp_adrapi':
   certificate_file_content  => '<base64-pkcs12-content>',
 }
 ```
+
+**b) By host path** — the file already exists on the host (managed out-of-band);
+the module mounts it as-is (read-only):
+
+```puppet
+class { 'dockerapp_adrapi':
+  service_name           => 'adrapi_prod',
+  certificate_file       => 'adrapi-fgv-dev.p12',
+  certificate_password   => 'change-me',
+  certificate_file_path  => '/srv/application-config/adrapi_prod/adrapi-fgv-dev.p12',
+}
+```
+
+`certificate_file_content` and `certificate_file_path` are mutually exclusive.
+With neither set, the image's built-in `adrapi-dev.p12` is used.
 
 ## Important Parameters
 

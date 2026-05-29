@@ -110,5 +110,51 @@ describe 'dockerapp_adrapi' do
 
       it { is_expected.to compile }
     end
+
+    context "on #{os} with certificate_file_content (base64)" do
+      let(:facts) { os_facts }
+      let(:params) do
+        {
+          version: '1.5.0',
+          service_name: 'adrapi_test',
+          certificate_file: 'adrapi-prod.p12',
+          certificate_file_content: 'ZmFrZS1wa2NzMTItYnl0ZXM=',
+        }
+      end
+
+      it { is_expected.to compile }
+      # Module writes the decoded cert under the config dir.
+      it { is_expected.to contain_file('/srv/application-config/adrapi_test/adrapi-prod.p12') }
+    end
+
+    context "on #{os} with certificate_file_path (host path)" do
+      let(:facts) { os_facts }
+      let(:params) do
+        {
+          version: '1.5.0',
+          service_name: 'adrapi_test',
+          certificate_file: 'adrapi-fgv-dev.p12',
+          certificate_file_path: '/srv/application-config/adrapi_test/adrapi-fgv-dev.p12',
+        }
+      end
+
+      it { is_expected.to compile }
+      # Host-provided cert is mounted as-is, not written by Puppet.
+      it { is_expected.not_to contain_file('/srv/application-config/adrapi_test/adrapi-fgv-dev.p12') }
+    end
+
+    context "on #{os} with both certificate sources set" do
+      let(:facts) { os_facts }
+      let(:params) do
+        {
+          version: '1.5.0',
+          service_name: 'adrapi_test',
+          certificate_file_content: 'ZmFrZQ==',
+          certificate_file_path: '/srv/application-config/adrapi_test/cert.p12',
+        }
+      end
+
+      it { is_expected.to compile.and_raise_error(%r{set only one of certificate_file_content or certificate_file_path}) }
+    end
   end
 end
