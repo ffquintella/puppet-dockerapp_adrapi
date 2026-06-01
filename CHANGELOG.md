@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## Release 2.2.0
+
+**Features**
+
+- Microsoft Entra ID (Azure AD) directory support (adrapi >= 1.8.0). New
+  `entra_domains` class parameter and `dockerapp_adrapi::entra_domain` defined type
+  render an `ldap:domains:<name>:entra` block (`kind: entraid`) into
+  `appsettings.json` and push the `client_secret` / `certificate_password` into the
+  encrypted SQLite store under the verbatim config path
+  (`ldap:domains:<name>:entra:clientSecret`), never into plaintext config.
+- New `default_domain` parameter (`ldap:defaultDomain`).
+- Default image bumped to `ffquintella/adrapi:1.9.0`.
+
+**Bugfixes**
+
+**Known Issues**
+
 ## Release 1.0.3
 
 Fixes

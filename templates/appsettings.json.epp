@@ -14,8 +14,29 @@
       String $ldap_pin_store,
       Integer $rate_limit_permit,
       Integer $rate_limit_window_seconds,
-      Integer $rate_limit_segments_per_window
+      Integer $rate_limit_segments_per_window,
+      Optional[String] $default_domain,
+      Optional[Hash] $entra_domains
 | -%>
+<%# Render the Entra ID domains as a JSON fragment. The whole transform (incl. the
+    lambda braces) is kept inside this single code tag so it is opaque to the test
+    harness's lightweight EPP renderer; real Puppet evaluates it normally. Secrets
+    (clientSecret / certificatePassword) are deliberately never emitted here. -%>
+<%- $entra_json = $entra_domains ? {
+      undef   => '',
+      default => $entra_domains.map |$name, $d| {
+        $entra = {
+          'tenantId'           => $d['tenant_id'],
+          'clientId'           => $d['client_id'],
+          'grantedPermissions' => $d['granted_permissions'],
+          'authorityHost'      => $d['authority_host'],
+          'graphBaseUrl'       => $d['graph_base_url'],
+          'scopes'             => $d['scopes'],
+          'certificatePath'    => $d['certificate_path'],
+        }.filter |$k, $v| { $v =~ NotUndef }
+        "\"${name}\": ${to_json({ 'kind' => 'entraid', 'entra' => $entra })}"
+      }.join(', '),
+    } -%>
 {
   "Logging": {
     "LogLevel": {
@@ -37,7 +58,10 @@
     "searchFilter": "<%= $search_filter %>",
     "maxResults": <%= $max_results %>,
     "adminCn": "<%= $admin_cn %>",
-    "pinStore": "<%= $ldap_pin_store %>"
+    "pinStore": "<%= $ldap_pin_store %>"<% if $default_domain { -%>,
+    "defaultDomain": "<%= $default_domain %>"<% } -%><% if $entra_domains { -%>,
+    "domains": { <%= $entra_json %> }<% } -%>
+
   },
   "security": {
     "databaseFile": "<%= $database_file %>",

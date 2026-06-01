@@ -48,6 +48,22 @@
 # @param ldap_pins
 #   Hash of LDAPS server pins to declare via `dockerapp_adrapi::ldap_pin`.
 #
+# @param default_domain
+#   Name of the default directory domain (`ldap:defaultDomain`). The top-level `ldap`
+#   block is always the default domain; set this only when you want the `{domain}` route
+#   segment to resolve to a specific name. Leave `undef` to use adrapi's `default` fallback.
+#
+# @param entra_domains
+#   Hash of Microsoft Entra ID (Azure AD) backed directories, keyed by domain name. Each
+#   entry is rendered into `appsettings.json` as `ldap:domains:<name>` with `kind: entraid`
+#   and an `entra` block (adrapi >= 1.8.0). The sensitive `client_secret` /
+#   `certificate_password` are NOT written to `appsettings.json`: when provided, they are
+#   declared as encrypted `app_secret` resources under the verbatim config path
+#   (`ldap:domains:<name>:entra:clientSecret` / `:certificatePassword`), matching adrapi's
+#   secret-store lookup. Per-domain keys: `tenant_id` (req), `client_id` (req),
+#   `client_secret` xor `certificate_path` (+ `certificate_password`), `granted_permissions`,
+#   `authority_host`, `graph_base_url`, `scopes`.
+#
 # @param ldap_servers
 #   A list of ldap servers to connect to
 #
@@ -123,7 +139,7 @@
 #
 class dockerapp_adrapi (
   String $service_name = 'adrapi',
-  String $version = '1.5.0',
+  String $version = '1.9.0',
   Optional[Array[String]] $ports = undef,
   Optional[Integer[1, 65535]] $http_port = 6000,
   Optional[Integer[1, 65535]] $https_port = 6001,
@@ -132,6 +148,18 @@ class dockerapp_adrapi (
   Hash $api_keys = {},
   Hash $app_secrets = {},
   Hash $ldap_pins = {},
+  Optional[String] $default_domain = undef,
+  Hash[String[1], Struct[{
+        tenant_id                      => String[1],
+        client_id                      => String[1],
+        Optional['client_secret']        => String,
+        Optional['certificate_path']     => String,
+        Optional['certificate_password'] => String,
+        Optional['authority_host']       => String,
+        Optional['graph_base_url']       => String,
+        Optional['scopes']               => Array[String],
+        Optional['granted_permissions']  => Array[String],
+  }]] $entra_domains = {},
   Array[String] $ldap_servers = ['127.0.0.1:389'],
   Boolean $ldap_use_ssl = true,
   Integer $ldap_max_results = 999,
@@ -241,6 +269,14 @@ class dockerapp_adrapi (
     default => $log_level,
   }
 
+  # Pass undef (not an empty hash) to the template when no Entra ID domains are declared,
+  # so the `ldap:domains` block is omitted entirely for the common case.
+  if $entra_domains == {} {
+    $entra_domains_tpl = undef
+  } else {
+    $entra_domains_tpl = $entra_domains
+  }
+
   file { "${conf_configdir}/appsettings.json":
     content => epp('dockerapp_adrapi/appsettings.json.epp', {
       'log_level'                      => $effective_log_level,
@@ -260,6 +296,8 @@ class dockerapp_adrapi (
       'rate_limit_permit'              => $rate_limit_permit,
       'rate_limit_window_seconds'      => $rate_limit_window_seconds,
       'rate_limit_segments_per_window' => $rate_limit_segments_per_window,
+      'default_domain'                 => $default_domain,
+      'entra_domains'                  => $entra_domains_tpl,
     }),
     require => File[$conf_configdir],
   }
@@ -303,6 +341,15 @@ class dockerapp_adrapi (
   }
   if $ldap_pins != {} {
     create_resources('dockerapp_adrapi::ldap_pin', $ldap_pins, { 'service_name' => $service_name })
+  }
+
+  # Entra ID-backed domains. The non-sensitive config is rendered into appsettings.json
+  # (above); each domain's `client_secret` / `certificate_password` is pushed into the
+  # encrypted SQLite store by the defined type. Declared via create_resources over the
+  # raw hash (the regent compiler expands defined types this way reliably - see the note
+  # below on why `.each`/derived-hash iteration is avoided here).
+  if $entra_domains != {} {
+    create_resources('dockerapp_adrapi::entra_domain', $entra_domains, { 'service_name' => $service_name })
   }
 
   # The HTTPS certificate can be supplied two ways: as base64 content (we write the
