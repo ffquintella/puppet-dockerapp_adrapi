@@ -21,6 +21,8 @@ The module:
     (`AdrapiApiKeys secret set/get/remove`).
   - `dockerapp_adrapi::ldap_pin` — TOFU LDAPS certificate pinning
     (`AdrapiLdapCertPin <host:port> --yes`).
+  - `dockerapp_adrapi::entra_domain` — Microsoft Entra ID (Azure AD) directory
+    credentials, stored encrypted under `ldap:domains:<name>:entra:*`.
 - Installs host-callable wrappers for the standalone in-container CLIs at
   `/usr/local/bin/adrapi-api-keys` and `/usr/local/bin/adrapi-ldap-cert-pin`,
   so operators can run them directly on the host (they forward to the container
@@ -133,6 +135,48 @@ dockerapp_adrapi::app_secret { 'ldap:bindCredentials':
 }
 ```
 
+### 4.1) Add a Microsoft Entra ID (Azure AD) directory
+
+adrapi (>= 1.8.0) can serve a Microsoft Entra ID tenant as an additional directory
+backend via Microsoft Graph, alongside on-prem LDAP/AD, using the same multi-domain
+routing (`/api/{domain}/users`, `/api/{domain}/groups`). Declare one entry per tenant
+in `entra_domains`; the key is the domain name used in the route:
+
+```puppet
+class { 'dockerapp_adrapi':
+  service_name   => 'adrapi_prod',
+  default_domain => 'corp',          # the on-prem LDAP domain stays the default
+  entra_domains  => {
+    'cloud' => {
+      'tenant_id'           => 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+      'client_id'           => '11111111-2222-3333-4444-555555555555',
+      'client_secret'       => Sensitive('secret-from-eyaml'),
+      'granted_permissions' => ['User.ReadWrite.All', 'Group.ReadWrite.All', 'GroupMember.ReadWrite.All'],
+    },
+  },
+}
+```
+
+This renders `ldap:domains:cloud` with `kind: entraid` into `appsettings.json` (the
+non-sensitive keys only) and pushes `client_secret` into the encrypted SQLite store under
+the verbatim key `ldap:domains:cloud:entra:clientSecret` — it never lands in
+`appsettings.json`. Use `certificate_path` + `certificate_password` instead of
+`client_secret` for certificate-based app auth. The app registration needs **application**
+(not delegated) Graph permissions with admin consent granted. `tenant_id` must be a
+specific tenant GUID/verified domain — `common`/`organizations`/`consumers` are rejected at
+startup; for a multi-tenant app, declare one `entra_domains` entry per customer tenant.
+
+A single domain can also be declared directly:
+
+```puppet
+dockerapp_adrapi::entra_domain { 'cloud':
+  tenant_id     => 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+  client_id     => '11111111-2222-3333-4444-555555555555',
+  client_secret => Sensitive('secret-from-eyaml'),
+  service_name  => 'adrapi_prod',
+}
+```
+
 ### 6) Run the CLIs directly on the host
 
 The module installs thin wrappers that forward to the standalone CLIs inside the
@@ -183,7 +227,7 @@ With neither set, the image's built-in `adrapi-dev.p12` is used.
 ## Important Parameters
 
 - `version`: container image tag (`ffquintella/adrapi:<version>`). Must be
-  `>= 1.5.0`.
+  `>= 1.5.0` (`>= 1.8.0` for the Entra ID backend; default `1.9.0`).
 - `ports`: explicit Docker port mappings; overrides `http_port`/`https_port`. Container
   side must be `6000` (HTTP) / `6001` (HTTPS) — these are fixed in the image.
 - `http_port` / `https_port`: host ports mapped to the container's fixed `6000`/`6001`
@@ -205,7 +249,12 @@ With neither set, the image's built-in `adrapi-dev.p12` is used.
   - `ldap_pin_store` (`cfg/ldap-trusted-certs.json`)
 - Rate limiting on auth endpoints:
   - `rate_limit_permit`, `rate_limit_window_seconds`, `rate_limit_segments_per_window`
-- `api_keys` / `app_secrets` / `ldap_pins`: optional hashes consumed by
+- Entra ID (Azure AD) settings:
+  - `default_domain` — names the default directory domain (`ldap:defaultDomain`).
+  - `entra_domains` — hash of Entra ID-backed directories (one per tenant). Non-sensitive
+    keys render into `ldap:domains:<name>:entra`; `client_secret` / `certificate_password`
+    are pushed into the encrypted store under the verbatim config path.
+- `api_keys` / `app_secrets` / `ldap_pins` / `entra_domains`: optional hashes consumed by
   `create_resources`. **Prefer declaring the defined types directly** —
   see [Limitations](#limitations).
 
@@ -296,10 +345,10 @@ make bump-patch
 ## Limitations
 
 - Module behavior depends on the `dockerapp` base module defaults and structure.
-- The bulk-iteration parameters (`api_keys`, `app_secrets`, `ldap_pins`) are
-  routed through `create_resources`. Until the current `regent` compiler
-  reliably autoloads in-module defined types invoked this way, prefer
-  declaring `dockerapp_adrapi::api_key`, `::app_secret`, and `::ldap_pin`
-  resources directly.
+- The bulk-iteration parameters (`api_keys`, `app_secrets`, `ldap_pins`,
+  `entra_domains`) are routed through `create_resources`. Until the current
+  `regent` compiler reliably autoloads in-module defined types invoked this way,
+  prefer declaring `dockerapp_adrapi::api_key`, `::app_secret`, `::ldap_pin`, and
+  `::entra_domain` resources directly.
 - `sec_keys` / `dockerapp_adrapi::seckey` are deprecated — see the
   [Deprecated](#deprecated-sec_keys-legacy-securityjson) section.

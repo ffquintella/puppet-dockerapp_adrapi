@@ -156,6 +156,33 @@ describe 'dockerapp_adrapi' do
       it { is_expected.to compile }
     end
 
+    context "on #{os} with entra_domains" do
+      let(:facts) { os_facts }
+      let(:params) do
+        {
+          version: '1.9.0',
+          service_name: 'adrapi_test',
+          default_domain: 'corp',
+          entra_domains: {
+            'cloud' => {
+              'tenant_id'           => 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+              'client_id'           => '11111111-2222-3333-4444-555555555555',
+              'client_secret'       => 'secret-from-eyaml',
+              'granted_permissions' => ['User.ReadWrite.All', 'Group.ReadWrite.All'],
+            },
+          },
+        }
+      end
+
+      it { is_expected.to compile }
+      # A defaultDomain and a domains block are emitted for Entra ID-backed directories.
+      it { is_expected.to contain_file('/srv/application-config/adrapi_test/appsettings.json').with_content(%r{"defaultDomain": "corp"}) }
+      it { is_expected.to contain_file('/srv/application-config/adrapi_test/appsettings.json').with_content(%r{"domains":}) }
+      # The client secret never lands in appsettings.json (it goes to the encrypted store).
+      it { is_expected.to contain_file('/srv/application-config/adrapi_test/appsettings.json').without_content(%r{secret-from-eyaml}) }
+      it { is_expected.to contain_file('/srv/application-config/adrapi_test/appsettings.json').without_content(%r{clientSecret}) }
+    end
+
     context "on #{os} with certificate_file_content (base64)" do
       let(:facts) { os_facts }
       let(:params) do
