@@ -8,8 +8,9 @@ using the `ffquintella/dockerapp` base module.
 The module:
 
 - Creates the ADRAPI runtime / config / log directories under `/srv`.
-- Generates `appsettings.json` from Puppet parameters (including the new
-  `security`, `ldap.pinStore`, and `rateLimit.auth` sections).
+- Generates `appsettings.json` from Puppet parameters, using adrapi's
+  backend-neutral `directories` layout (adrapi >= 1.10.0) alongside the
+  `security` and `rateLimit.auth` sections.
 - Provisions a writable `cfg/` directory mounted at `/app/cfg` inside the
   container, holding the SQLite API-key + encrypted-secrets store
   (`api-keys.db`), the seed file (`.seed`, mode `0600`), and the LDAPS pin
@@ -22,7 +23,7 @@ The module:
   - `dockerapp_adrapi::ldap_pin` — TOFU LDAPS certificate pinning
     (`AdrapiLdapCertPin <host:port> --yes`).
   - `dockerapp_adrapi::entra_domain` — Microsoft Entra ID (Azure AD) directory
-    credentials, stored encrypted under `ldap:domains:<name>:entra:*`.
+    credentials, stored encrypted under `directories:domains:<name>:entra:*`.
 - Installs host-callable wrappers for the standalone in-container CLIs at
   `/usr/local/bin/adrapi-api-keys` and `/usr/local/bin/adrapi-ldap-cert-pin`,
   so operators can run them directly on the host (they forward to the container
@@ -37,8 +38,9 @@ The module:
 - `ffquintella/dockerapp` `>= 1.7.1 < 2.0.0`
 - `puppetlabs/stdlib` `>= 9.0.3 < 10.0.0`
 - `puppetlabs/concat` `>= 7.0.0 < 10.0.0`
-- ADRAPI container image `>= 1.5.0` (older images do not support the SQLite
-  key store or the encrypted-secrets configuration provider).
+- ADRAPI container image `>= 1.10.0` (this module renders the `directories`
+  configuration section, which older images do not read; see
+  [Directory configuration](#directory-configuration)).
 
 ## Quick Start
 
@@ -70,7 +72,10 @@ class { 'dockerapp_adrapi':
 `ldap_bind_dn`, `ldap_bind_password`, and `certificate_password` are no longer
 written to `appsettings.json` — when non-empty they are pushed into the
 encrypted `app_secrets` table via `AdrapiApiKeys secret set` and exposed back to
-the app through `SqliteSecretsConfigurationProvider`.
+the app through `SqliteSecretsConfigurationProvider`. The bind credentials are
+stored under the directory-scoped names
+`directories:domains:<ldap_domain>:ldap:bindDn` / `:bindCredentials` — see
+[Directory configuration](#directory-configuration).
 
 The container always listens on **6000 (HTTP)** and **6001 (HTTPS)** internally — these
 are hardcoded in the ADRAPI image's Kestrel host and are not configurable. `http_port` and
@@ -129,15 +134,19 @@ dockerapp_adrapi::ldap_pin { 'dc01.example.com:636':
 ### 4) Manage additional app secrets directly
 
 ```puppet
-dockerapp_adrapi::app_secret { 'ldap:bindCredentials':
+dockerapp_adrapi::app_secret { 'directories:domains:corp:ldap:bindCredentials':
   value        => Sensitive('rotated-bind-password'),
   service_name => 'adrapi_prod',
 }
 ```
 
+The resource title is the verbatim configuration path adrapi reads the value back from,
+so it carries the directory domain — see
+[Directory configuration](#42-directory-configuration).
+
 ### 4.1) Add a Microsoft Entra ID (Azure AD) directory
 
-adrapi (>= 1.8.0) can serve a Microsoft Entra ID tenant as an additional directory
+adrapi (>= 1.10.0) can serve a Microsoft Entra ID tenant as an additional directory
 backend via Microsoft Graph, alongside on-prem LDAP/AD, using the same multi-domain
 routing (`/api/{domain}/users`, `/api/{domain}/groups`). Declare one entry per tenant
 in `entra_domains`; the key is the domain name used in the route:
@@ -157,9 +166,9 @@ class { 'dockerapp_adrapi':
 }
 ```
 
-This renders `ldap:domains:cloud` with `kind: entraid` into `appsettings.json` (the
-non-sensitive keys only) and pushes `client_secret` into the encrypted SQLite store under
-the verbatim key `ldap:domains:cloud:entra:clientSecret` — it never lands in
+This renders `directories:domains:cloud` with `kind: entraid` into `appsettings.json`
+(the non-sensitive keys only) and pushes `client_secret` into the encrypted SQLite store
+under the verbatim key `directories:domains:cloud:entra:clientSecret` — it never lands in
 `appsettings.json`. Use `certificate_path` + `certificate_password` instead of
 `client_secret` for certificate-based app auth. The app registration needs **application**
 (not delegated) Graph permissions with admin consent granted. `tenant_id` must be a
@@ -176,6 +185,71 @@ dockerapp_adrapi::entra_domain { 'cloud':
   service_name  => 'adrapi_prod',
 }
 ```
+
+### 4.2) Directory configuration
+
+Since adrapi 1.10.0 all directories live under a single backend-neutral `directories`
+section, where LDAP is one `kind` among peers (adrapi `docs/DIRECTORIES_CONFIG.md`).
+This module renders that layout only — the deprecated top-level `ldap` section (removed
+in adrapi 2.0.0) is never written.
+
+The `ldap_*` parameters describe one domain. Its name is `ldap_domain`, which defaults to
+`default_domain` unless an `entra_domains` entry already claims that name, in which case
+the LDAP domain falls back to adrapi's `default`. So the rendered config for
+`default_domain => 'corp'` plus a `cloud` Entra domain is:
+
+```json
+"directories": {
+  "defaultDomain": "corp",
+  "domains": {
+    "cloud": { "kind": "entraid", "entra": { "tenantId": "...", "clientId": "..." } },
+    "corp":  { "kind": "ldap", "ldap": { "servers": ["dc01:636"], "ssl": true, "...": "..." } }
+  }
+}
+```
+
+An Entra ID domain can now be the default one. For a cloud-only deployment, turn the LDAP
+domain off:
+
+```puppet
+class { 'dockerapp_adrapi':
+  default_domain     => 'cloud',
+  manage_ldap_domain => false,
+  entra_domains      => {
+    'cloud' => {
+      'tenant_id' => 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+      'client_id' => '11111111-2222-3333-4444-555555555555',
+    },
+  },
+}
+```
+
+`default_domain` must name a configured domain, spelled exactly as the domain it names,
+and `users` / `groups` / `ous` / `infos` are rejected (they would make routes like
+`/api/users/users` ambiguous).
+
+#### Upgrading from dockerapp_adrapi <= 2.2.0
+
+Secrets are stored under the verbatim configuration path they fill, so the ones this
+module manages move with the config. Puppet re-creates them under the new names on the
+next run, but the old entries stay behind and adrapi refuses an Entra `clientSecret`
+paired with a certificate declared in the new layout. Re-key and clean up with adrapi's
+own CLI, using the LDAP domain's name:
+
+```bash
+adrapi-api-keys secret migrate-directories --domain corp
+```
+
+Then, once adrapi has restarted cleanly, drop the legacy entries:
+
+```bash
+adrapi-api-keys secret migrate-directories --domain corp --yes
+```
+
+Any `app_secrets` you declare yourself still need their keys updated by hand:
+`ldap:bindCredentials` → `directories:domains:<domain>:ldap:bindCredentials`,
+`ldap:domains:<name>:entra:clientSecret` →
+`directories:domains:<name>:entra:clientSecret`.
 
 ### 6) Run the CLIs directly on the host
 
@@ -227,7 +301,7 @@ With neither set, the image's built-in `adrapi-dev.p12` is used.
 ## Important Parameters
 
 - `version`: container image tag (`ffquintella/adrapi:<version>`). Must be
-  `>= 1.5.0` (`>= 1.8.0` for the Entra ID backend; default `1.9.0`).
+  `>= 1.10.0` (the `directories` config layout; default `1.10.0`).
 - `ports`: explicit Docker port mappings; overrides `http_port`/`https_port`. Container
   side must be `6000` (HTTP) / `6001` (HTTPS) — these are fixed in the image.
 - `http_port` / `https_port`: host ports mapped to the container's fixed `6000`/`6001`
@@ -236,8 +310,10 @@ With neither set, the image's built-in `adrapi-dev.p12` is used.
 - LDAP settings:
   - `ldap_servers`, `ldap_use_ssl`, `ldap_pool_size`, `ldap_max_results`
   - `ldap_search_base`, `ldap_search_filter`, `ldap_admin_cn`
+  - `ldap_domain` / `manage_ldap_domain` — name of the LDAP domain, and whether to
+    render one at all.
   - `ldap_bind_dn` / `ldap_bind_password` — pushed into the encrypted store as
-    `ldap:bindDn` / `ldap:bindCredentials` when non-empty.
+    `directories:domains:<ldap_domain>:ldap:bindDn` / `:bindCredentials` when non-empty.
 - Certificate settings:
   - `certificate_file`, `certificate_file_content`
   - `certificate_password` — pushed into the encrypted store as
@@ -246,14 +322,17 @@ With neither set, the image's built-in `adrapi-dev.p12` is used.
   - `database_file` (`cfg/api-keys.db`)
   - `seed_file` (`cfg/.seed`)
   - `legacy_json_file` (`security.json`)
-  - `ldap_pin_store` (`cfg/ldap-trusted-certs.json`)
+  - `ldap_pin_store` (`cfg/ldap-trusted-certs.json`, rendered as the LDAP domain's
+    `trustedCertificatesFile`)
 - Rate limiting on auth endpoints:
   - `rate_limit_permit`, `rate_limit_window_seconds`, `rate_limit_segments_per_window`
-- Entra ID (Azure AD) settings:
-  - `default_domain` — names the default directory domain (`ldap:defaultDomain`).
+- Directory settings:
+  - `default_domain` — names the default directory domain (`directories:defaultDomain`);
+    it may be of any `kind`, LDAP or Entra ID.
   - `entra_domains` — hash of Entra ID-backed directories (one per tenant). Non-sensitive
-    keys render into `ldap:domains:<name>:entra`; `client_secret` / `certificate_password`
-    are pushed into the encrypted store under the verbatim config path.
+    keys render into `directories:domains:<name>:entra`; `client_secret` /
+    `certificate_password` are pushed into the encrypted store under the verbatim config
+    path.
 - `api_keys` / `app_secrets` / `ldap_pins` / `entra_domains`: optional hashes consumed by
   `create_resources`. **Prefer declaring the defined types directly** —
   see [Limitations](#limitations).

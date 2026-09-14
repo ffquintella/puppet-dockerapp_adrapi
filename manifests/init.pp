@@ -49,18 +49,29 @@
 #   Hash of LDAPS server pins to declare via `dockerapp_adrapi::ldap_pin`.
 #
 # @param default_domain
-#   Name of the default directory domain (`ldap:defaultDomain`). The top-level `ldap`
-#   block is always the default domain; set this only when you want the `{domain}` route
-#   segment to resolve to a specific name. Leave `undef` to use adrapi's `default` fallback.
+#   Name of the default directory domain (`directories:defaultDomain`) - the domain served
+#   by the domain-less routes (`/api/users`, ...). It must name one of the configured
+#   domains, and since adrapi 1.10.0 that may be a domain of any `kind`, so an Entra ID
+#   domain can be the default. Leave `undef` to use the LDAP domain (see `ldap_domain`).
+#
+# @param ldap_domain
+#   Name of the directory domain built from the `ldap_*` parameters, rendered as
+#   `directories:domains:<name>` with `kind: ldap`. Leave `undef` to derive it: the
+#   `default_domain` when that name isn't taken by an Entra ID domain, otherwise adrapi's
+#   `default` fallback.
+#
+# @param manage_ldap_domain
+#   Whether to render an LDAP domain from the `ldap_*` parameters at all. Set to `false`
+#   for a deployment backed exclusively by `entra_domains`.
 #
 # @param entra_domains
 #   Hash of Microsoft Entra ID (Azure AD) backed directories, keyed by domain name. Each
-#   entry is rendered into `appsettings.json` as `ldap:domains:<name>` with `kind: entraid`
-#   and an `entra` block (adrapi >= 1.8.0). The sensitive `client_secret` /
+#   entry is rendered into `appsettings.json` as `directories:domains:<name>` with
+#   `kind: entraid` and an `entra` block (adrapi >= 1.10.0). The sensitive `client_secret` /
 #   `certificate_password` are NOT written to `appsettings.json`: when provided, they are
 #   declared as encrypted `app_secret` resources under the verbatim config path
-#   (`ldap:domains:<name>:entra:clientSecret` / `:certificatePassword`), matching adrapi's
-#   secret-store lookup. Per-domain keys: `tenant_id` (req), `client_id` (req),
+#   (`directories:domains:<name>:entra:clientSecret` / `:certificatePassword`), matching
+#   adrapi's secret-store lookup. Per-domain keys: `tenant_id` (req), `client_id` (req),
 #   `client_secret` xor `certificate_path` (+ `certificate_password`), `granted_permissions`,
 #   `authority_host`, `graph_base_url`, `scopes`.
 #
@@ -78,11 +89,12 @@
 #
 # @param ldap_bind_dn
 #   DN of the user to connect to ldap server. When non-empty, declared as an encrypted
-#   `app_secret` (key `ldap:bindDn`) instead of being written to `appsettings.json`.
+#   `app_secret` (key `directories:domains:<ldap_domain>:ldap:bindDn`) instead of being
+#   written to `appsettings.json`.
 #
 # @param ldap_bind_password
 #   Password of the user used to connect to ldap server. When non-empty, declared as an
-#   encrypted `app_secret` (key `ldap:bindCredentials`).
+#   encrypted `app_secret` (key `directories:domains:<ldap_domain>:ldap:bindCredentials`).
 #
 # @param ldap_search_base
 #   Search limitation
@@ -126,7 +138,8 @@
 #   on first start.
 #
 # @param ldap_pin_store
-#   Path (inside the container) to the LDAPS certificate pin store JSON.
+#   Path (inside the container) to the LDAPS certificate pin store JSON
+#   (`directories:domains:<ldap_domain>:ldap:trustedCertificatesFile`).
 #
 # @param rate_limit_permit
 #   Max requests per window for the auth endpoint rate limiter.
@@ -139,7 +152,7 @@
 #
 class dockerapp_adrapi (
   String $service_name = 'adrapi',
-  String $version = '1.9.0',
+  String $version = '1.10.0',
   Optional[Array[String]] $ports = undef,
   Optional[Integer[1, 65535]] $http_port = 6000,
   Optional[Integer[1, 65535]] $https_port = 6001,
@@ -149,7 +162,9 @@ class dockerapp_adrapi (
   Hash $app_secrets = {},
   Hash $ldap_pins = {},
   Optional[String] $default_domain = undef,
-  Hash[String[1], Struct[{
+  Optional[String] $ldap_domain = undef,
+  Boolean $manage_ldap_domain = true,
+  Hash[Pattern[/\A(?!(?i:users|groups|ous|infos)\z).+\z/], Struct[{
         tenant_id                      => String[1],
         client_id                      => String[1],
         Optional['client_secret']        => String,
@@ -270,11 +285,61 @@ class dockerapp_adrapi (
   }
 
   # Pass undef (not an empty hash) to the template when no Entra ID domains are declared,
-  # so the `ldap:domains` block is omitted entirely for the common case.
+  # so nothing but the LDAP domain lands in `directories:domains` for the common case.
   if $entra_domains == {} {
     $entra_domains_tpl = undef
   } else {
     $entra_domains_tpl = $entra_domains
+  }
+
+  # adrapi >= 1.10.0 lays its directories out under the backend-neutral `directories`
+  # section, where the `ldap_*` parameters describe one domain among peers (adrapi
+  # docs/DIRECTORIES_CONFIG.md). Its name is `ldap_domain`, defaulting to `default_domain`
+  # unless an Entra ID domain already claims that name - in which case the LDAP domain
+  # falls back to adrapi's `default` and the Entra domain gets to be the default one.
+  #
+  # NOTE: domain membership is tested by hash lookup (`$entra_domains[$name]`) rather than
+  # `member()`/`in`/`keys()` - the current regent compiler evaluates those to undef, so a
+  # membership test written with them silently reads as "not a member".
+  if $manage_ldap_domain {
+    if $ldap_domain != undef {
+      $effective_ldap_domain = $ldap_domain
+    } elsif $default_domain != undef and $entra_domains[$default_domain] == undef {
+      $effective_ldap_domain = $default_domain
+    } else {
+      $effective_ldap_domain = 'default'
+    }
+  } else {
+    $effective_ldap_domain = undef
+  }
+
+  $effective_default_domain = $default_domain ? {
+    undef   => $effective_ldap_domain ? {
+      undef   => 'default',
+      default => $effective_ldap_domain,
+    },
+    default => $default_domain,
+  }
+
+  if $effective_ldap_domain == undef and $entra_domains == {} {
+    fail('dockerapp_adrapi: no directory domain configured - set manage_ldap_domain => true or declare entra_domains')
+  }
+
+  if $effective_ldap_domain != undef and $entra_domains[$effective_ldap_domain] != undef {
+    fail("dockerapp_adrapi: ldap_domain '${effective_ldap_domain}' collides with an entra_domains entry of the same name")
+  }
+
+  # Domain names are compared verbatim here (adrapi itself matches them case-insensitively),
+  # so `default_domain` must be spelled exactly like the domain it names.
+  if $effective_default_domain != $effective_ldap_domain and $entra_domains[$effective_default_domain] == undef {
+    fail("dockerapp_adrapi: default_domain '${effective_default_domain}' names no configured domain")
+  }
+
+  # adrapi rejects these names: they would make routes like /api/users/users ambiguous.
+  # Entra ID domain names are checked by the `entra_domains` key type instead - the
+  # compiler can't iterate the hash here.
+  if $effective_ldap_domain =~ /\A(?i:users|groups|ous|infos)\z/ {
+    fail("dockerapp_adrapi: reserved directory domain name '${effective_ldap_domain}' - adrapi rejects users/groups/ous/infos")
   }
 
   file { "${conf_configdir}/appsettings.json":
@@ -296,7 +361,8 @@ class dockerapp_adrapi (
       'rate_limit_permit'              => $rate_limit_permit,
       'rate_limit_window_seconds'      => $rate_limit_window_seconds,
       'rate_limit_segments_per_window' => $rate_limit_segments_per_window,
-      'default_domain'                 => $default_domain,
+      'default_domain'                 => $effective_default_domain,
+      'ldap_domain'                    => $effective_ldap_domain,
       'entra_domains'                  => $entra_domains_tpl,
     }),
     require => File[$conf_configdir],
@@ -304,18 +370,25 @@ class dockerapp_adrapi (
 
   # Bind credentials and the certificate password live in the encrypted SQLite store.
   # They are declared here as app_secret resources so they are kept in sync with the
-  # Puppet-declared values.
+  # Puppet-declared values. The secret name is the verbatim config path adrapi reads it
+  # back from, so it follows the domain into `directories:domains:<name>:ldap:*`.
+  if $effective_ldap_domain == undef and ($ldap_bind_dn != '' or $ldap_bind_password != '') {
+    fail('dockerapp_adrapi: ldap_bind_dn/ldap_bind_password need an LDAP domain, but manage_ldap_domain is false')
+  }
+
+  $ldap_secret_base = "directories:domains:${effective_ldap_domain}:ldap"
+
   if $ldap_bind_dn != '' {
-    dockerapp_adrapi::app_secret { "${service_name}:ldap:bindDn":
+    dockerapp_adrapi::app_secret { "${service_name}:${ldap_secret_base}:bindDn":
       service_name => $service_name,
-      key          => 'ldap:bindDn',
+      key          => "${ldap_secret_base}:bindDn",
       value        => $ldap_bind_dn,
     }
   }
   if $ldap_bind_password != '' {
-    dockerapp_adrapi::app_secret { "${service_name}:ldap:bindCredentials":
+    dockerapp_adrapi::app_secret { "${service_name}:${ldap_secret_base}:bindCredentials":
       service_name => $service_name,
-      key          => 'ldap:bindCredentials',
+      key          => "${ldap_secret_base}:bindCredentials",
       value        => $ldap_bind_password,
     }
   }

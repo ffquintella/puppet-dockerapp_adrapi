@@ -1,11 +1,12 @@
 # Declares the credentials for a Microsoft Entra ID (Azure AD) backed directory domain.
 #
 # The non-sensitive Entra config (`tenantId`, `clientId`, `grantedPermissions`, ...) is
-# rendered into `appsettings.json` under `ldap:domains:<name>:entra` by the main class.
-# This type owns only the *secret half*: the `client_secret` and/or `certificate_password`
-# are pushed into the encrypted SQLite store (via `dockerapp_adrapi::app_secret`) under the
-# verbatim config path adrapi reads them back from - `ldap:domains:<name>:entra:clientSecret`
-# and `:certificatePassword` (see adrapi `EntraConfig` + `SqliteSecretsConfigurationSource`).
+# rendered into `appsettings.json` under `directories:domains:<name>:entra` by the main
+# class. This type owns only the *secret half*: the `client_secret` and/or
+# `certificate_password` are pushed into the encrypted SQLite store (via
+# `dockerapp_adrapi::app_secret`) under the verbatim config path adrapi reads them back
+# from - `directories:domains:<name>:entra:clientSecret` and `:certificatePassword` (see
+# adrapi `EntraConfig` + `SqliteSecretsConfigurationSource`, adrapi >= 1.10.0).
 #
 # It is normally declared for you by the `dockerapp_adrapi` class from its `entra_domains`
 # hash, but can also be declared directly.
@@ -73,18 +74,18 @@ define dockerapp_adrapi::entra_domain (
   # Each credential maps to the verbatim adrapi config path. The "${service_name}:" prefix
   # is stripped by app_secret, leaving the exact key adrapi looks up.
   if $client_secret != undef and $client_secret != '' {
-    dockerapp_adrapi::app_secret { "${service_name}:ldap:domains:${domain}:entra:clientSecret":
+    dockerapp_adrapi::app_secret { "${service_name}:directories:domains:${domain}:entra:clientSecret":
       service_name => $service_name,
-      key          => "ldap:domains:${domain}:entra:clientSecret",
+      key          => "directories:domains:${domain}:entra:clientSecret",
       value        => $client_secret,
       ensure       => $ensure,
     }
   }
 
   if $certificate_password != undef and $certificate_password != '' {
-    dockerapp_adrapi::app_secret { "${service_name}:ldap:domains:${domain}:entra:certificatePassword":
+    dockerapp_adrapi::app_secret { "${service_name}:directories:domains:${domain}:entra:certificatePassword":
       service_name => $service_name,
-      key          => "ldap:domains:${domain}:entra:certificatePassword",
+      key          => "directories:domains:${domain}:entra:certificatePassword",
       value        => $certificate_password,
       ensure       => $ensure,
     }

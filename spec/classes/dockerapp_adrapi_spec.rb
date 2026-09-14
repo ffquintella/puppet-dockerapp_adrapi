@@ -27,7 +27,13 @@ describe 'dockerapp_adrapi' do
       it { is_expected.to contain_file('/srv/application-config/adrapi_test/appsettings.json').with_content(%r{"adminCn": "Administrator"}) }
       it { is_expected.to contain_file('/srv/application-config/adrapi_test/appsettings.json').with_content(%r{"databaseFile": "cfg/api-keys.db"}) }
       it { is_expected.to contain_file('/srv/application-config/adrapi_test/appsettings.json').with_content(%r{"seedFile": "cfg/.seed"}) }
-      it { is_expected.to contain_file('/srv/application-config/adrapi_test/appsettings.json').with_content(%r{"pinStore": "cfg/ldap-trusted-certs.json"}) }
+      it { is_expected.to contain_file('/srv/application-config/adrapi_test/appsettings.json').with_content(%r{"trustedCertificatesFile": "cfg/ldap-trusted-certs.json"}) }
+      # adrapi >= 1.10.0 layout: a `directories` section with the LDAP settings as one
+      # `kind` of domain. The deprecated top-level `ldap` section is not emitted.
+      it { is_expected.to contain_file('/srv/application-config/adrapi_test/appsettings.json').with_content(%r{"directories":}) }
+      it { is_expected.to contain_file('/srv/application-config/adrapi_test/appsettings.json').with_content(%r{"defaultDomain": "default"}) }
+      it { is_expected.to contain_file('/srv/application-config/adrapi_test/appsettings.json').with_content(%r{"default": \{\s*"kind": "ldap"}) }
+      it { is_expected.to contain_file('/srv/application-config/adrapi_test/appsettings.json').without_content(%r{^  "ldap": \{}) }
       it { is_expected.to contain_file('/srv/application-config/adrapi_test/appsettings.json').with_content(%r{"permitLimit": 5}) }
       # Secrets no longer rendered into appsettings.json.
       it { is_expected.to contain_file('/srv/application-config/adrapi_test/appsettings.json').without_content(%r{bindCredentials}) }
@@ -178,9 +184,133 @@ describe 'dockerapp_adrapi' do
       # A defaultDomain and a domains block are emitted for Entra ID-backed directories.
       it { is_expected.to contain_file('/srv/application-config/adrapi_test/appsettings.json').with_content(%r{"defaultDomain": "corp"}) }
       it { is_expected.to contain_file('/srv/application-config/adrapi_test/appsettings.json').with_content(%r{"domains":}) }
+      # `default_domain` names no Entra domain, so the LDAP block takes that name.
+      it { is_expected.to contain_file('/srv/application-config/adrapi_test/appsettings.json').with_content(%r{"corp": \{\s*"kind": "ldap"}) }
       # The client secret never lands in appsettings.json (it goes to the encrypted store).
       it { is_expected.to contain_file('/srv/application-config/adrapi_test/appsettings.json').without_content(%r{secret-from-eyaml}) }
       it { is_expected.to contain_file('/srv/application-config/adrapi_test/appsettings.json').without_content(%r{clientSecret}) }
+    end
+
+    # An Entra ID domain may be the default one since adrapi 1.10.0; `manage_ldap_domain`
+    # drops the LDAP domain entirely for a cloud-only deployment.
+    context "on #{os} with an Entra ID default domain and no LDAP" do
+      let(:facts) { os_facts }
+      let(:params) do
+        {
+          version: '1.10.0',
+          service_name: 'adrapi_test',
+          default_domain: 'cloud',
+          manage_ldap_domain: false,
+          entra_domains: {
+            'cloud' => {
+              'tenant_id' => 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+              'client_id' => '11111111-2222-3333-4444-555555555555',
+            },
+          },
+        }
+      end
+
+      it { is_expected.to compile }
+      it { is_expected.to contain_file('/srv/application-config/adrapi_test/appsettings.json').with_content(%r{"defaultDomain": "cloud"}) }
+    end
+
+    # With an Entra domain holding the default name, the LDAP domain falls back to
+    # adrapi's `default` rather than colliding with it.
+    context "on #{os} with an Entra ID default domain alongside LDAP" do
+      let(:facts) { os_facts }
+      let(:params) do
+        {
+          version: '1.10.0',
+          service_name: 'adrapi_test',
+          default_domain: 'cloud',
+          entra_domains: {
+            'cloud' => {
+              'tenant_id' => 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+              'client_id' => '11111111-2222-3333-4444-555555555555',
+            },
+          },
+        }
+      end
+
+      it { is_expected.to compile }
+      it { is_expected.to contain_file('/srv/application-config/adrapi_test/appsettings.json').with_content(%r{"default": \{\s*"kind": "ldap"}) }
+    end
+
+    context "on #{os} with an explicit ldap_domain" do
+      let(:facts) { os_facts }
+      let(:params) do
+        {
+          version: '1.10.0',
+          service_name: 'adrapi_test',
+          ldap_domain: 'corp',
+          default_domain: 'corp',
+          ldap_bind_dn: 'CN=svc,DC=example,DC=com',
+          ldap_bind_password: 'p@ss',
+        }
+      end
+
+      it { is_expected.to compile }
+      it { is_expected.to contain_file('/srv/application-config/adrapi_test/appsettings.json').with_content(%r{"corp": \{\s*"kind": "ldap"}) }
+    end
+
+    context "on #{os} with a default_domain naming no configured domain" do
+      let(:facts) { os_facts }
+      let(:params) do
+        {
+          version: '1.10.0',
+          service_name: 'adrapi_test',
+          ldap_domain: 'corp',
+          default_domain: 'nowhere',
+        }
+      end
+
+      it { is_expected.to compile.and_raise_error(%r{names no configured domain}) }
+    end
+
+    context "on #{os} with an ldap_domain colliding with an Entra domain" do
+      let(:facts) { os_facts }
+      let(:params) do
+        {
+          version: '1.10.0',
+          service_name: 'adrapi_test',
+          ldap_domain: 'cloud',
+          entra_domains: {
+            'cloud' => {
+              'tenant_id' => 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+              'client_id' => '11111111-2222-3333-4444-555555555555',
+            },
+          },
+        }
+      end
+
+      it { is_expected.to compile.and_raise_error(%r{collides with an entra_domains entry}) }
+    end
+
+    context "on #{os} with a reserved domain name" do
+      let(:facts) { os_facts }
+      let(:params) do
+        {
+          version: '1.10.0',
+          service_name: 'adrapi_test',
+          ldap_domain: 'Users',
+          default_domain: 'Users',
+        }
+      end
+
+      it { is_expected.to compile.and_raise_error(%r{reserved directory domain name}) }
+    end
+
+    context "on #{os} with no directory domain at all" do
+      let(:facts) { os_facts }
+      let(:params) do
+        {
+          version: '1.10.0',
+          service_name: 'adrapi_test',
+          manage_ldap_domain: false,
+        }
+      end
+
+      it { is_expected.to compile.and_raise_error(%r{no directory domain configured}) }
     end
 
     context "on #{os} with certificate_file_content (base64)" do

@@ -15,14 +15,21 @@
       Integer $rate_limit_permit,
       Integer $rate_limit_window_seconds,
       Integer $rate_limit_segments_per_window,
-      Optional[String] $default_domain,
+      String $default_domain,
+      Optional[String] $ldap_domain,
       Optional[Hash] $entra_domains
 | -%>
+<%# adrapi >= 1.10.0 configures its directories under the backend-neutral `directories`
+    section (see adrapi docs/DIRECTORIES_CONFIG.md): LDAP is one `kind` among peers rather
+    than the section everything else hangs off. The deprecated top-level `ldap` section is
+    deliberately not emitted - adrapi still reads it, but it is removed in adrapi 2.0.0. -%>
 <%# Render the Entra ID domains as a JSON fragment. The whole transform (incl. the
     lambda braces) is kept inside this single code tag so it is opaque to the test
     harness's lightweight EPP renderer; real Puppet evaluates it normally. Secrets
-    (clientSecret / certificatePassword) are deliberately never emitted here. -%>
-<%- $entra_json = $entra_domains ? {
+    (clientSecret / certificatePassword) are deliberately never emitted here. The
+    fragment carries its own trailing separator so the LDAP domain, rendered last as
+    literal text below, stays readable. -%>
+<%- $entra_entries = $entra_domains ? {
       undef   => '',
       default => $entra_domains.map |$name, $d| {
         $entra = {
@@ -37,6 +44,10 @@
         "\"${name}\": ${to_json({ 'kind' => 'entraid', 'entra' => $entra })}"
       }.join(', '),
     } -%>
+<%- $entra_json = ($entra_entries == '' or $ldap_domain == undef) ? {
+      true    => $entra_entries,
+      default => "${entra_entries}, ",
+    } -%>
 {
   "Logging": {
     "LogLevel": {
@@ -47,21 +58,26 @@
   "certificate": {
     "file": "<%= $certificate_file %>"
   },
-  "ldap": {
-    "servers": [ <%= $servers.map |$x| { "\"${x}\"" }.join(', ') %> ],
-    "ssl": <%= $ssl ? {
-      true  => 'true',
-      false => 'false',
-    } %>,
-    "poolSize": <%= $pool_size %>,
-    "searchBase": "<%= $search_base %>",
-    "searchFilter": "<%= $search_filter %>",
-    "maxResults": <%= $max_results %>,
-    "adminCn": "<%= $admin_cn %>",
-    "pinStore": "<%= $ldap_pin_store %>"<% if $default_domain { -%>,
-    "defaultDomain": "<%= $default_domain %>"<% } -%><% if $entra_domains { -%>,
-    "domains": { <%= $entra_json %> }<% } -%>
-
+  "directories": {
+    "defaultDomain": "<%= $default_domain %>",
+    "domains": { <%= $entra_json %><% if $ldap_domain { -%>
+"<%= $ldap_domain %>": {
+      "kind": "ldap",
+      "ldap": {
+        "servers": [ <%= $servers.map |$x| { "\"${x}\"" }.join(', ') %> ],
+        "ssl": <%= $ssl ? {
+          true  => 'true',
+          false => 'false',
+        } %>,
+        "poolSize": <%= $pool_size %>,
+        "searchBase": "<%= $search_base %>",
+        "searchFilter": "<%= $search_filter %>",
+        "maxResults": <%= $max_results %>,
+        "adminCn": "<%= $admin_cn %>",
+        "trustedCertificatesFile": "<%= $ldap_pin_store %>"
+      }
+    }<% } -%>
+ }
   },
   "security": {
     "databaseFile": "<%= $database_file %>",

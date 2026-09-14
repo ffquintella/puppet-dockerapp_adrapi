@@ -2,7 +2,7 @@
 #
 # Values are stored AEAD-encrypted (ChaCha20-Poly1305) in the SQLite DB and exposed to
 # the running app through `SqliteSecretsConfigurationProvider` - consumers keep reading
-# them as `IConfiguration["ldap:bindCredentials"]` etc.
+# them as `IConfiguration["directories:domains:<name>:ldap:bindCredentials"]` etc.
 #
 # Idempotency: the `unless` guard compares the configured value against `secret get` output
 # inside the container. If they match, no command runs and no plaintext touches the host.
@@ -10,12 +10,13 @@
 # @summary Declare an encrypted application secret
 #
 # @example
-#   dockerapp_adrapi::app_secret { 'ldap:bindCredentials':
+#   dockerapp_adrapi::app_secret { 'directories:domains:corp:ldap:bindCredentials':
 #     value => Sensitive('password-from-eyaml'),
 #   }
 #
 # @param key
-#   Configuration key (`section:subkey`), e.g. `ldap:bindCredentials`. Defaults to title.
+#   Configuration key (`section:subkey`), e.g.
+#   `directories:domains:corp:ldap:bindCredentials`. Defaults to title.
 #
 # @param value
 #   Plaintext value to encrypt and store.
@@ -35,7 +36,7 @@ define dockerapp_adrapi::app_secret (
   include dockerapp_adrapi::cli
 
   $exec_base = "docker exec ${service_name} /app/adrapi-api-keys secret"
-  # Strip "service_name:" prefix from titles like "adrapi:ldap:bindDn" so the CLI sees
+  # Strip "service_name:" prefix from titles like "adrapi:certificate:password" so the CLI sees
   # only the configuration key.
   $resolved_key = regsubst($key, "^${service_name}:", '')
 
